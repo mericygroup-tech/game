@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using TMPro;
 using UnityEditor;
+using UnityEditor.Events;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -15,22 +16,18 @@ public static class MainMenuBuilder
     private const string StartSceneName = "S01";
     private const string RootName = "MainMenu_Generated";
     private const string MaterialFolder = "Assets/Materials/MainMenu";
+    private const string ExactArtworkPath = "Assets/Art/UI/MainMenu/MainMenu_ExactArtwork.png";
 
     [MenuItem("Tools/Dong Chay Anh Hung/Rebuild Main Menu")]
     public static void BuildScene()
     {
         EnsureFolders();
+        ConfigureExactArtworkImporter();
 
         Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
         GameObject root = new GameObject(RootName);
-        Material stoneMat = CreateMaterial("MainMenu_Stone_Dark", new Color32(38, 32, 27, 255), 0.1f);
-        Material bronzeMat = CreateMaterial("MainMenu_Bronze_Gold", new Color32(169, 112, 42, 255), 0.35f, new Color(0.55f, 0.32f, 0.08f));
-        Material redMat = CreateMaterial("MainMenu_Red_Cloth", new Color32(95, 20, 16, 255), 0.2f);
-        Material emberMat = CreateMaterial("MainMenu_Ember_Glow", new Color32(255, 122, 36, 255), 0.1f, new Color(2.2f, 0.55f, 0.08f));
-
-        SetupCameraAndLighting(root.transform);
-        BuildBackdrop(root.transform, stoneMat, bronzeMat, redMat, emberMat);
+        SetupExactArtworkCamera(root.transform);
 
         Canvas canvas = BuildCanvas(root.transform);
         EnsureEventSystem(root.transform);
@@ -95,6 +92,8 @@ public static class MainMenuBuilder
         RequireObject("MainMenu_SettingsButton");
         RequireObject("MainMenu_AchievementsButton");
         RequireObject("MainMenu_ExitButton");
+        RequireObject("MainMenu_ExactArtwork");
+        RequireObject("MainMenu_MasterVolumeSlider");
 
         if (Object.FindAnyObjectByType<MainMenuController>() == null)
             throw new UnityException("Main Menu verify failed: MainMenuController was not found.");
@@ -211,6 +210,47 @@ public static class MainMenuBuilder
         CreateEmbers(backdropRoot.transform, emberMat);
     }
 
+    private static void ConfigureExactArtworkImporter()
+    {
+        TextureImporter importer = AssetImporter.GetAtPath(ExactArtworkPath) as TextureImporter;
+        if (importer == null)
+            throw new UnityException("Main Menu artwork importer is missing: " + ExactArtworkPath);
+
+        bool changed =
+            importer.mipmapEnabled ||
+            importer.npotScale != TextureImporterNPOTScale.None ||
+            importer.textureCompression != TextureImporterCompression.Uncompressed ||
+            importer.filterMode != FilterMode.Bilinear ||
+            importer.wrapMode != TextureWrapMode.Clamp ||
+            importer.maxTextureSize < 2048;
+
+        importer.textureType = TextureImporterType.Default;
+        importer.sRGBTexture = true;
+        importer.mipmapEnabled = false;
+        importer.npotScale = TextureImporterNPOTScale.None;
+        importer.textureCompression = TextureImporterCompression.Uncompressed;
+        importer.filterMode = FilterMode.Bilinear;
+        importer.wrapMode = TextureWrapMode.Clamp;
+        importer.maxTextureSize = 2048;
+
+        if (changed)
+            importer.SaveAndReimport();
+    }
+
+    private static void SetupExactArtworkCamera(Transform parent)
+    {
+        GameObject cameraObject = new GameObject("Main Camera");
+        cameraObject.transform.SetParent(parent, false);
+        Camera camera = cameraObject.AddComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.black;
+        camera.cullingMask = 0;
+        cameraObject.AddComponent<AudioListener>();
+
+        RenderSettings.fog = false;
+        RenderSettings.ambientLight = Color.black;
+    }
+
     private static Canvas BuildCanvas(Transform parent)
     {
         GameObject canvasObject = new GameObject("MainMenu_Canvas");
@@ -230,6 +270,72 @@ public static class MainMenuBuilder
     }
 
     private static void BuildMenuUI(
+        Transform parent,
+        out CanvasGroup blackFade,
+        out CanvasGroup logoGroup,
+        out CanvasGroup menuGroup,
+        out CanvasGroup footerGroup,
+        out RectTransform swordRoot,
+        out Button startButton,
+        out Button settingsButton,
+        out Button achievementsButton,
+        out Button exitButton,
+        out Button settingsCloseButton,
+        out Button achievementsCloseButton,
+        out GameObject settingsPanel,
+        out GameObject achievementsPanel,
+        out TMP_Text statusText,
+        out TMP_Text versionText)
+    {
+        Texture2D artwork = AssetDatabase.LoadAssetAtPath<Texture2D>(ExactArtworkPath);
+        if (artwork == null)
+            throw new UnityException("Main Menu artwork is missing: " + ExactArtworkPath);
+
+        CreateFullScreenImage("MainMenu_Letterbox", parent, Color.black, false);
+
+        GameObject artObject = CreateUIObject("MainMenu_ExactArtwork", parent, new Vector2(742f, 541f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        RawImage artImage = artObject.AddComponent<RawImage>();
+        artImage.texture = artwork;
+        artImage.color = Color.white;
+        artImage.raycastTarget = false;
+
+        AspectRatioFitter fitter = artObject.AddComponent<AspectRatioFitter>();
+        fitter.aspectMode = AspectRatioFitter.AspectMode.FitInParent;
+        fitter.aspectRatio = 742f / 541f;
+        logoGroup = artObject.AddComponent<CanvasGroup>();
+
+        GameObject hitboxRoot = CreateUIObject("MainMenu_ArtworkHitboxes", artObject.transform, Vector2.zero, Vector2.zero, Vector2.zero);
+        Stretch(hitboxRoot.GetComponent<RectTransform>());
+        menuGroup = hitboxRoot.AddComponent<CanvasGroup>();
+
+        Vector2 artSize = new Vector2(742f, 541f);
+        startButton = CreateArtworkButton(hitboxRoot.transform, "MainMenu_StartButton", new Rect(273f, 350f, 199f, 33f), artSize);
+        settingsButton = CreateArtworkButton(hitboxRoot.transform, "MainMenu_SettingsButton", new Rect(274f, 389f, 197f, 35f), artSize);
+        achievementsButton = CreateArtworkButton(hitboxRoot.transform, "MainMenu_AchievementsButton", new Rect(274f, 429f, 197f, 35f), artSize);
+        exitButton = CreateArtworkButton(hitboxRoot.transform, "MainMenu_ExitButton", new Rect(274f, 469f, 197f, 35f), artSize);
+
+        GameObject footerObject = CreateUIObject("MainMenu_Footer", parent, Vector2.zero, Vector2.zero, Vector2.zero);
+        Stretch(footerObject.GetComponent<RectTransform>());
+        footerGroup = footerObject.AddComponent<CanvasGroup>();
+        footerObject.GetComponent<RectTransform>().SetAsFirstSibling();
+
+        swordRoot = null;
+        statusText = null;
+        versionText = null;
+
+        settingsPanel = CreateVolumeSettingsPanel(parent, out settingsCloseButton);
+        achievementsPanel = CreateEpicInfoPanel(
+            parent,
+            "MainMenu_AchievementsPanel",
+            "THÀNH TỰU",
+            "DẤU ẤN NGƯỜI ANH HÙNG",
+            "Tiến trình chiến đấu và các cột mốc cốt truyện sẽ xuất hiện tại đây.",
+            out achievementsCloseButton);
+
+        blackFade = CreateFullScreenImage("MainMenu_BlackFade", parent, Color.black, false).AddComponent<CanvasGroup>();
+    }
+
+    private static void BuildGeneratedMenuUI(
         Transform parent,
         out CanvasGroup blackFade,
         out CanvasGroup logoGroup,
@@ -376,6 +482,149 @@ public static class MainMenuBuilder
         achievementsPanel = CreateInfoPanel(parent, "MainMenu_AchievementsPanel", "THÀNH TỰU", "Khu vực này sẽ lưu tiến trình, các mốc vượt wave và thành tựu cốt truyện.", out achievementsCloseButton);
 
         blackFade = CreateFullScreenImage("MainMenu_BlackFade", parent, Color.black, false).AddComponent<CanvasGroup>();
+    }
+
+    private static Button CreateArtworkButton(Transform parent, string name, Rect pixelRect, Vector2 artworkSize)
+    {
+        GameObject buttonObject = CreateUIObject(name, parent, Vector2.zero, Vector2.zero, Vector2.zero);
+        RectTransform rect = buttonObject.GetComponent<RectTransform>();
+        rect.anchorMin = new Vector2(pixelRect.xMin / artworkSize.x, 1f - pixelRect.yMax / artworkSize.y);
+        rect.anchorMax = new Vector2(pixelRect.xMax / artworkSize.x, 1f - pixelRect.yMin / artworkSize.y);
+        rect.offsetMin = Vector2.zero;
+        rect.offsetMax = Vector2.zero;
+
+        Image hitTarget = buttonObject.AddComponent<Image>();
+        // Alpha zero lets CanvasRenderer cull the mesh, which also removes it
+        // from GraphicRaycaster in Unity 6000.5. One byte of alpha is visually
+        // imperceptible but keeps the hit target alive and clickable.
+        hitTarget.color = new Color32(255, 255, 255, 1);
+
+        Button button = buttonObject.AddComponent<Button>();
+        button.targetGraphic = hitTarget;
+        button.transition = Selectable.Transition.None;
+
+        CanvasGroup highlight = CreateArtworkButtonHighlight(buttonObject.transform, name + "_Highlight");
+        MainMenuButtonFX fx = buttonObject.AddComponent<MainMenuButtonFX>();
+        fx.ConfigureArtwork(highlight);
+        return button;
+    }
+
+    private static CanvasGroup CreateArtworkButtonHighlight(Transform parent, string name)
+    {
+        GameObject highlightObject = CreateUIObject(name, parent, Vector2.zero, Vector2.zero, Vector2.zero);
+        RectTransform highlightRect = highlightObject.GetComponent<RectTransform>();
+        highlightRect.anchorMin = Vector2.zero;
+        highlightRect.anchorMax = Vector2.one;
+        highlightRect.offsetMin = new Vector2(12f, 4f);
+        highlightRect.offsetMax = new Vector2(-12f, -4f);
+
+        Image fill = highlightObject.AddComponent<Image>();
+        fill.color = new Color32(170, 43, 27, 170);
+        fill.raycastTarget = false;
+
+        CreateArtworkHighlightRail(highlightObject.transform, "TopRail", true);
+        CreateArtworkHighlightRail(highlightObject.transform, "BottomRail", false);
+
+        CanvasGroup group = highlightObject.AddComponent<CanvasGroup>();
+        group.alpha = 0f;
+        group.interactable = false;
+        group.blocksRaycasts = false;
+        return group;
+    }
+
+    private static void CreateArtworkHighlightRail(Transform parent, string name, bool top)
+    {
+        GameObject railObject = CreateUIObject(name, parent, Vector2.zero, Vector2.zero, Vector2.zero);
+        RectTransform railRect = railObject.GetComponent<RectTransform>();
+        float anchorY = top ? 1f : 0f;
+        railRect.anchorMin = new Vector2(0.08f, anchorY);
+        railRect.anchorMax = new Vector2(0.92f, anchorY);
+        railRect.pivot = new Vector2(0.5f, anchorY);
+        railRect.anchoredPosition = Vector2.zero;
+        railRect.sizeDelta = new Vector2(0f, 1.5f);
+
+        Image rail = railObject.AddComponent<Image>();
+        rail.color = new Color32(238, 186, 88, 235);
+        rail.raycastTarget = false;
+    }
+
+    private static GameObject CreateVolumeSettingsPanel(Transform parent, out Button closeButton)
+    {
+        GameObject overlay = CreateFullScreenImage("MainMenu_SettingsPanel", parent, new Color32(0, 0, 0, 196), true);
+        GameObject panel = CreateUIObject("MainMenu_SettingsPanel_Box", overlay.transform, new Vector2(760f, 400f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        Image panelImage = panel.AddComponent<Image>();
+        panelImage.color = new Color32(17, 14, 11, 250);
+
+        Outline outline = panel.AddComponent<Outline>();
+        outline.effectColor = new Color32(188, 128, 48, 235);
+        outline.effectDistance = new Vector2(2f, -2f);
+
+        CreateRectPart("MainMenu_SettingsHeader", panel.transform, new Vector2(714f, 78f), new Vector2(0.5f, 0.84f), Vector2.zero, new Color32(91, 24, 18, 230));
+        TMP_Text title = CreateText("MainMenu_SettingsTitle", panel.transform, "CÀI ĐẶT", 38f, new Color32(238, 201, 121, 255), TextAlignmentOptions.Center, FontStyles.Bold);
+        SetRect(title.rectTransform, new Vector2(640f, 60f), new Vector2(0.5f, 0.845f), Vector2.zero);
+        title.characterSpacing = 5f;
+
+        TMP_Text label = CreateText("MainMenu_MasterVolumeLabel", panel.transform, "ÂM LƯỢNG TỔNG", 21f, new Color32(224, 204, 164, 255), TextAlignmentOptions.Left, FontStyles.Bold);
+        SetRect(label.rectTransform, new Vector2(360f, 38f), new Vector2(0.34f, 0.61f), Vector2.zero);
+        label.characterSpacing = 2f;
+
+        TMP_Text valueText = CreateText("MainMenu_MasterVolumeValue", panel.transform, "100%", 22f, new Color32(230, 173, 76, 255), TextAlignmentOptions.Right, FontStyles.Bold);
+        SetRect(valueText.rectTransform, new Vector2(150f, 38f), new Vector2(0.78f, 0.61f), Vector2.zero);
+
+        Slider slider = CreateMasterVolumeSlider(panel.transform, valueText);
+        slider.GetComponent<RectTransform>().anchorMin = new Vector2(0.5f, 0.45f);
+        slider.GetComponent<RectTransform>().anchorMax = new Vector2(0.5f, 0.45f);
+
+        TMP_Text hint = CreateText("MainMenu_MasterVolumeHint", panel.transform, "Kéo thanh hoặc dùng phím ← → để điều chỉnh âm lượng trong game", 17f, new Color32(174, 153, 120, 230), TextAlignmentOptions.Center, FontStyles.Normal);
+        SetRect(hint.rectTransform, new Vector2(650f, 36f), new Vector2(0.5f, 0.31f), Vector2.zero);
+
+        closeButton = CreateEpicMenuButton(panel.transform, "ĐÓNG", "ESC", false, "MainMenu_SettingsPanel_CloseButton");
+        RectTransform closeRect = closeButton.GetComponent<RectTransform>();
+        closeRect.anchorMin = new Vector2(0.5f, 0.13f);
+        closeRect.anchorMax = new Vector2(0.5f, 0.13f);
+        closeRect.anchoredPosition = Vector2.zero;
+        closeRect.sizeDelta = new Vector2(300f, 56f);
+
+        overlay.SetActive(false);
+        return overlay;
+    }
+
+    private static Slider CreateMasterVolumeSlider(Transform parent, TMP_Text valueText)
+    {
+        GameObject sliderObject = CreateUIObject("MainMenu_MasterVolumeSlider", parent, new Vector2(580f, 58f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        Slider slider = sliderObject.AddComponent<Slider>();
+        slider.minValue = 0f;
+        slider.maxValue = 1f;
+        slider.value = 1f;
+        slider.wholeNumbers = false;
+        slider.direction = Slider.Direction.LeftToRight;
+        slider.transition = Selectable.Transition.ColorTint;
+
+        Image background = CreateRectPart("Background", sliderObject.transform, new Vector2(520f, 14f), new Vector2(0.5f, 0.5f), Vector2.zero, new Color32(43, 31, 22, 255)).GetComponent<Image>();
+        Outline backgroundOutline = background.gameObject.AddComponent<Outline>();
+        backgroundOutline.effectColor = new Color32(139, 88, 35, 230);
+        backgroundOutline.effectDistance = new Vector2(1f, -1f);
+
+        GameObject fillArea = CreateUIObject("Fill Area", sliderObject.transform, new Vector2(510f, 10f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        Image fill = CreateStretchImage("Fill", fillArea.transform, new Color32(183, 61, 29, 255), false).GetComponent<Image>();
+
+        GameObject handleArea = CreateUIObject("Handle Slide Area", sliderObject.transform, new Vector2(510f, 54f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        GameObject handleObject = CreateUIObject("Handle", handleArea.transform, new Vector2(30f, 44f), new Vector2(0.5f, 0.5f), Vector2.zero);
+        Image handle = handleObject.AddComponent<Image>();
+        handle.color = new Color32(221, 167, 72, 255);
+        Outline handleOutline = handleObject.AddComponent<Outline>();
+        handleOutline.effectColor = new Color32(72, 39, 17, 255);
+        handleOutline.effectDistance = new Vector2(2f, -2f);
+
+        slider.fillRect = fill.rectTransform;
+        slider.handleRect = handleObject.GetComponent<RectTransform>();
+        slider.targetGraphic = handle;
+
+        sliderObject.AddComponent<AudioSliderFeedback>();
+        MainMenuVolumeControl control = sliderObject.AddComponent<MainMenuVolumeControl>();
+        control.Configure(valueText);
+        UnityEventTools.AddPersistentListener(slider.onValueChanged, control.SetMasterVolume);
+        return slider;
     }
 
     private static void CreateEdgeShade(Transform parent, bool left)
@@ -888,7 +1137,13 @@ public static class MainMenuBuilder
 
     private static void RequireObject(string name)
     {
-        if (GameObject.Find(name) == null)
-            throw new UnityException("Main Menu verify failed: missing object " + name + ".");
+        Transform[] transforms = Object.FindObjectsByType<Transform>(FindObjectsInactive.Include);
+        for (int i = 0; i < transforms.Length; i++)
+        {
+            if (transforms[i] != null && transforms[i].name == name)
+                return;
+        }
+
+        throw new UnityException("Main Menu verify failed: missing object " + name + ".");
     }
 }

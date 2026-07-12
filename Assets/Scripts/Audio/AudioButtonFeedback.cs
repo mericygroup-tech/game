@@ -25,7 +25,15 @@ public sealed class AudioButtonFeedback : MonoBehaviour, IPointerClickHandler, I
 
     private void PlayIfInteractable()
     {
+        if (UsesSpecializedBlessingFeedback())
+            return;
+
         if (button != null && button.IsActive() && button.IsInteractable())
             GameAudio.PlayUiClick();
+    }
+
+    private bool UsesSpecializedBlessingFeedback()
+    {
+        return GetComponent<BlessingChoiceUI>() != null || gameObject.name.StartsWith("S03_Blessing");
     }
 }

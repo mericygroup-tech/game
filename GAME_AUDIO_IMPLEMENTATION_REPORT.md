@@ -51,3 +51,12 @@ Các state `FinalBoss` và `LastStand` đã có trong API, nhưng không tự su
 - Dự án được nâng từ `6000.4.6f1` lên `6000.5.1f1` để nhận bản sửa chính thức cho lỗi `Internal error - unexpected guid mismatch` của Unity/AI Assistant; log sau migration có 0 GUID mismatch và 0 compiler error.
 - Main Menu đã được chạy một vòng Play Mode rồi thoát; kết quả sau domain reload là 0 GUID mismatch, 0 compiler error và 0 runtime exception.
 - Có menu kiểm tra: `Tools > Dong Chay Anh Hung > Audio > Validate Audio Setup`.
+
+## Cập nhật âm thanh Blessing
+
+- Hover card: `UI_Blessing_Hover.wav`, có cooldown và dùng một voice riêng để không phát chồng khi rê chuột nhanh.
+- Chọn card: `UI_Blessing_Select.wav`.
+- Bỏ qua: `UI_Blessing_Skip.wav`.
+- Làm mới: `UI_Blessing_Reroll.wav`.
+- Các nút Blessing bỏ qua `UI_Click.wav` mặc định để mỗi thao tác chỉ phát đúng một hiệu ứng chuyên dụng.
+- Scene `S01` không còn phát `MUSIC_Intro_VietnamFlute.mp3`; video intro sở hữu toàn bộ soundtrack để tránh hai nguồn âm thanh bị trộn.

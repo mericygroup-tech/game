@@ -31,7 +31,6 @@ public static class GameAudioBuildValidator
     private static readonly string[] RequiredClipPaths =
     {
         "Assets/Resources/Audio/Music/MUSIC_MainTheme_VietnamHeroic.mp3",
-        "Assets/Resources/Audio/Music/MUSIC_Intro_VietnamFlute.mp3",
         "Assets/Resources/Audio/Music/SFX_WarDrums_Loop.wav",
         "Assets/Resources/Audio/Music/MUSIC_Battle_Pursuit.wav",
         "Assets/Resources/Audio/Music/MUSIC_FinalBoss_Epic.wav",
@@ -43,6 +42,10 @@ public static class GameAudioBuildValidator
         "Assets/Resources/Audio/UI/UI_SliderTick.wav",
         "Assets/Resources/Audio/UI/UI_Win.wav",
         "Assets/Resources/Audio/UI/UI_Lose.wav",
+        "Assets/Resources/Audio/UI/UI_Blessing_Hover.wav",
+        "Assets/Resources/Audio/UI/UI_Blessing_Select.wav",
+        "Assets/Resources/Audio/UI/UI_Blessing_Skip.wav",
+        "Assets/Resources/Audio/UI/UI_Blessing_Reroll.wav",
         "Assets/Resources/Audio/SFX/SwordWhoosh_Fallback.mp3",
         "Assets/Resources/Audio/SFX/SwordImpact_Fallback.mp3",
         "Assets/Resources/Audio/Ambience/CaveAmbience.mp3",

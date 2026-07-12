@@ -31,9 +31,34 @@ public static class GameAudio
         GameAudioDirector.Instance?.PlayUiClick();
     }
 
+    public static void PlayUiHover()
+    {
+        GameAudioDirector.Instance?.PlayUiHover();
+    }
+
     public static void PlaySliderTick()
     {
         GameAudioDirector.Instance?.PlaySliderTick();
+    }
+
+    public static void PlayBlessingHover()
+    {
+        GameAudioDirector.Instance?.PlayBlessingHover();
+    }
+
+    public static void PlayBlessingSelect()
+    {
+        GameAudioDirector.Instance?.PlayBlessingSelect();
+    }
+
+    public static void PlayBlessingSkip()
+    {
+        GameAudioDirector.Instance?.PlayBlessingSkip();
+    }
+
+    public static void PlayBlessingReroll()
+    {
+        GameAudioDirector.Instance?.PlayBlessingReroll();
     }
 
     public static void PlayDefeat()

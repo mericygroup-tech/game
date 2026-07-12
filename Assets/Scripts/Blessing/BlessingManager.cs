@@ -241,6 +241,7 @@ public sealed class BlessingManager : MonoBehaviour
         if (!selectionOpen || rerollsRemaining <= 0)
             return;
 
+        GameAudio.PlayBlessingReroll();
         rerollsRemaining--;
         currentChoices.Clear();
         currentChoices.AddRange(RollDistinctChoices(3));
@@ -259,6 +260,7 @@ public sealed class BlessingManager : MonoBehaviour
         if (!selectionOpen)
             return;
 
+        GameAudio.PlayBlessingSkip();
         selectionOpen = false;
         SetCardsInteractable(false);
 

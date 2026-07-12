@@ -123,7 +123,8 @@ public sealed class MainMenuController : MonoBehaviour
         if (logoGroup != null)
         {
             logoEndScale = logoGroup.transform.localScale;
-            logoGroup.transform.localScale = logoEndScale * 0.91f;
+            if (swordRoot != null)
+                logoGroup.transform.localScale = logoEndScale * 0.91f;
         }
 
         if (menuGroup != null)
@@ -132,7 +133,8 @@ public sealed class MainMenuController : MonoBehaviour
             if (rect != null)
             {
                 menuEndPosition = rect.anchoredPosition;
-                rect.anchoredPosition = menuEndPosition + new Vector2(0f, -28f);
+                if (swordRoot != null)
+                    rect.anchoredPosition = menuEndPosition + new Vector2(0f, -28f);
             }
         }
 
@@ -147,15 +149,20 @@ public sealed class MainMenuController : MonoBehaviour
         PlayIntroDrum();
         SetStatus("Âm trống Đông Sơn vang lên...");
 
-        yield return new WaitForSecondsRealtime(0.18f);
-        yield return FadeGroup(blackFade, 1f, 0f, introDuration * 0.32f);
-        StartCoroutine(ScaleLogo(introDuration * 0.43f));
-        yield return FadeGroup(logoGroup, 0f, 1f, introDuration * 0.27f);
-        yield return AnimateSwordDrop(introDuration * 0.32f);
-        yield return RevealMenu(introDuration * 0.24f);
-        yield return FadeGroup(footerGroup, 0f, 1f, introDuration * 0.13f);
+        // The supplied artwork is already the complete composition. Reveal it
+        // immediately and only fade the black cover; this keeps all four
+        // hitboxes deterministic even if an Editor domain reload interrupts a
+        // longer cinematic coroutine.
+        if (logoGroup != null)
+            logoGroup.transform.localScale = logoEndScale;
+        if (menuGroup != null && menuGroup.transform is RectTransform menuRect)
+            menuRect.anchoredPosition = menuEndPosition;
 
+        SetGroup(logoGroup, 1f, true);
         SetGroup(menuGroup, 1f, true);
+        SetGroup(footerGroup, 1f, false);
+        yield return FadeGroup(blackFade, 1f, 0f, 0.45f);
+
         introFinished = true;
         SetStatus("Chọn BẮT ĐẦU để bước vào dòng chảy lịch sử.");
         SelectStartButton();

@@ -24,6 +24,8 @@ public sealed class GameAudioDirector : MonoBehaviour
     private AudioSource activeMusicSource;
     private AudioSource ambienceSource;
     private AudioSource uiSource;
+    private AudioSource uiHoverSource;
+    private AudioSource blessingUiSource;
     private AudioSource[] sfxSources;
 
     private Coroutine musicFadeRoutine;
@@ -32,6 +34,9 @@ public sealed class GameAudioDirector : MonoBehaviour
     private GameAmbientState currentAmbientState = GameAmbientState.None;
     private float currentMusicGain = 1f;
     private float currentAmbientGain = 1f;
+    private float currentBlessingUiGain = 1f;
+    private float nextUiHoverTime;
+    private float nextBlessingHoverTime;
     private int nextSfxVoice;
 
     private float masterVolume;
@@ -158,9 +163,50 @@ public sealed class GameAudioDirector : MonoBehaviour
         PlayUi(LoadClip(ResourceRoot + "UI/UI_Click"), 0.72f);
     }
 
+    public void PlayUiHover()
+    {
+        if (Time.unscaledTime < nextUiHoverTime || uiHoverSource == null)
+            return;
+
+        AudioClip clip = LoadClip(ResourceRoot + "UI/UI_Click");
+        if (clip == null)
+            return;
+
+        nextUiHoverTime = Time.unscaledTime + 0.07f;
+        uiHoverSource.Stop();
+        uiHoverSource.clip = clip;
+        uiHoverSource.pitch = 1.16f;
+        uiHoverSource.volume = GetBusGain(GameAudioBus.Ui) * 0.28f;
+        uiHoverSource.Play();
+    }
+
     public void PlaySliderTick()
     {
         PlayUi(LoadClip(ResourceRoot + "UI/UI_SliderTick"), 0.38f);
+    }
+
+    public void PlayBlessingHover()
+    {
+        if (Time.unscaledTime < nextBlessingHoverTime)
+            return;
+
+        nextBlessingHoverTime = Time.unscaledTime + 0.08f;
+        PlayBlessingUi(LoadClip(ResourceRoot + "UI/UI_Blessing_Hover"), 0.34f);
+    }
+
+    public void PlayBlessingSelect()
+    {
+        PlayBlessingUi(LoadClip(ResourceRoot + "UI/UI_Blessing_Select"), 0.76f);
+    }
+
+    public void PlayBlessingSkip()
+    {
+        PlayBlessingUi(LoadClip(ResourceRoot + "UI/UI_Blessing_Skip"), 0.48f);
+    }
+
+    public void PlayBlessingReroll()
+    {
+        PlayBlessingUi(LoadClip(ResourceRoot + "UI/UI_Blessing_Reroll"), 0.68f);
     }
 
     public void PlayDefeat()
@@ -224,8 +270,10 @@ public sealed class GameAudioDirector : MonoBehaviour
 
         if (sceneName == "S01" || sceneName.StartsWith("S01_before"))
         {
+            // The authored intro video already contains its own soundtrack.
+            // Keep game music silent so the two mixes never overlap.
             PlayAmbient(GameAmbientState.None, 0.3f);
-            PlayMusic(GameMusicState.Intro, 0.55f);
+            PlayMusic(GameMusicState.None, 0.25f);
             return;
         }
 
@@ -382,17 +430,33 @@ public sealed class GameAudioDirector : MonoBehaviour
         uiSource.PlayOneShot(clip, GetBusGain(GameAudioBus.Ui) * Mathf.Clamp01(gain));
     }
 
+    private void PlayBlessingUi(AudioClip clip, float gain)
+    {
+        if (clip == null || blessingUiSource == null)
+            return;
+
+        currentBlessingUiGain = Mathf.Clamp01(gain);
+        blessingUiSource.Stop();
+        blessingUiSource.clip = clip;
+        blessingUiSource.volume = GetBusGain(GameAudioBus.Ui) * currentBlessingUiGain;
+        blessingUiSource.Play();
+    }
+
     private void CreateSources()
     {
         musicSourceA = CreateSource("Music_A");
         musicSourceB = CreateSource("Music_B");
         ambienceSource = CreateSource("Ambience");
         uiSource = CreateSource("UI");
+        uiHoverSource = CreateSource("UI_Hover");
+        blessingUiSource = CreateSource("UI_Blessing");
 
         musicSourceA.ignoreListenerPause = true;
         musicSourceB.ignoreListenerPause = true;
         ambienceSource.ignoreListenerPause = true;
         uiSource.ignoreListenerPause = true;
+        uiHoverSource.ignoreListenerPause = true;
+        blessingUiSource.ignoreListenerPause = true;
 
         sfxSources = new AudioSource[SfxVoiceCount];
         for (int i = 0; i < sfxSources.Length; i++)
@@ -432,6 +496,12 @@ public sealed class GameAudioDirector : MonoBehaviour
 
         if (ambienceSource != null && ambienceSource.isPlaying)
             ambienceSource.volume = GetBusGain(GameAudioBus.Ambience) * currentAmbientGain;
+
+        if (blessingUiSource != null && blessingUiSource.isPlaying)
+            blessingUiSource.volume = GetBusGain(GameAudioBus.Ui) * currentBlessingUiGain;
+
+        if (uiHoverSource != null && uiHoverSource.isPlaying)
+            uiHoverSource.volume = GetBusGain(GameAudioBus.Ui) * 0.28f;
     }
 
     private static AudioClip LoadFirstAvailable(string[] resourcePaths)
