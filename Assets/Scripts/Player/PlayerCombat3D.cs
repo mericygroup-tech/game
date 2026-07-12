@@ -95,6 +95,7 @@ public class PlayerCombat3D : MonoBehaviour
         Vector3 attackDirection = GetAttackDirection();
         FaceAttackDirection(attackDirection);
         animatorDriver?.PlayLightAttack();
+        GameAudio.PlaySwordSwing(false);
 
         ExecuteAttack(
             damage,
@@ -105,7 +106,8 @@ public class PlayerCombat3D : MonoBehaviour
             enemyStunDuration,
             feedbackColor,
             attackDirection,
-            "Light attack"
+            "Light attack",
+            false
         );
     }
 
@@ -119,6 +121,7 @@ public class PlayerCombat3D : MonoBehaviour
         Vector3 attackDirection = GetAttackDirection();
         FaceAttackDirection(attackDirection);
         animatorDriver?.PlayPush();
+        GameAudio.PlaySwordSwing(true);
 
         if (heavyAttackRoutine != null)
             StopCoroutine(heavyAttackRoutine);
@@ -143,7 +146,8 @@ public class PlayerCombat3D : MonoBehaviour
             heavyEnemyStunDuration,
             heavyFeedbackColor,
             attackDirection,
-            "Heavy attack"
+            "Heavy attack",
+            true
         );
 
         IsHeavyAttackActive = false;
@@ -159,7 +163,8 @@ public class PlayerCombat3D : MonoBehaviour
         float stunDuration,
         Color pulseColor,
         Vector3 attackDirection,
-        string debugLabel)
+        string debugLabel,
+        bool heavy)
     {
         BlessingAttackContext attackContext = blessingRuntime != null
             ? blessingRuntime.CreateAttackContext(rawDamage, attackDirection)
@@ -207,6 +212,9 @@ public class PlayerCombat3D : MonoBehaviour
 
             hitCount++;
         }
+
+        if (hitCount > 0)
+            GameAudio.PlaySwordImpact(heavy);
 
         blessingRuntime?.AfterPlayerAttack(attackContext, attackDirection, hitEnemies);
         SpawnAttackFeedback(attackDirection, hitCount > 0, pulseColor, range * 0.78f, debugLabel.Replace(" ", string.Empty));

@@ -203,6 +203,7 @@ public class S02CaveEventController : MonoBehaviour
 
         resonanceUnlocked = true;
         stage = FlowStage.ResonanceCombat;
+        GameAudio.PlayAmbient(GameAmbientState.TimeRift, 0.65f);
         HideInteractionText();
         StartCoroutine(ResonanceSequence());
     }
@@ -232,6 +233,7 @@ public class S02CaveEventController : MonoBehaviour
     private void StartStabilization()
     {
         ConfigureDiabloStyleCamera();
+        GameAudio.PlayMusic(GameMusicState.Combat, 0.65f);
         stabilizationRunning = true;
         stabilizationStartTime = Time.time;
         nextMinionSpawnTime = Time.time + 1.2f;
@@ -288,6 +290,7 @@ public class S02CaveEventController : MonoBehaviour
 
         stabilizationRunning = false;
         stage = FlowStage.Complete;
+        GameAudio.PlayMusic(GameMusicState.None, 0.55f);
         HideProgressText();
         StartCoroutine(CompleteSequence());
     }

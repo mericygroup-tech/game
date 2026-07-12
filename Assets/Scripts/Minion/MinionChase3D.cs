@@ -478,7 +478,10 @@ public class MinionChase3D : MonoBehaviour
             return Vector3.zero;
 
         if (distance <= 0.001f)
-            away = Quaternion.Euler(0f, Mathf.Abs(GetInstanceID()) % 360, 0f) * Vector3.right;
+        {
+            uint stableEntityHash = unchecked((uint)GetEntityId().GetHashCode());
+            away = Quaternion.Euler(0f, stableEntityHash % 360u, 0f) * Vector3.right;
+        }
         else
             away /= distance;
 

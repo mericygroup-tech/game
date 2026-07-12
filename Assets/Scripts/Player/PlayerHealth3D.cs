@@ -99,6 +99,7 @@ public class PlayerHealth3D : MonoBehaviour
         isDead = true;
         Time.timeScale = 1f;
         Time.fixedDeltaTime = 0.02f;
+        GameAudio.PlayDefeat();
         S01Soundscape.StopActionSounds();
         CancelSceneTransitions();
         SnapToGround();

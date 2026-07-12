@@ -139,7 +139,7 @@ public class S01Soundscape : MonoBehaviour
 
         ambienceSource.clip = cityAmbience;
         ambienceSource.loop = true;
-        ambienceSource.volume = ambienceVolume;
+        ambienceSource.volume = ambienceVolume * GetBusGain(GameAudioBus.Ambience);
 
         if (!ambienceSource.isPlaying)
             ambienceSource.Play();
@@ -152,7 +152,7 @@ public class S01Soundscape : MonoBehaviour
 
         heartbeatSource.clip = chaseHeartbeatLoop;
         heartbeatSource.loop = true;
-        heartbeatSource.volume = heartbeatVolume;
+        heartbeatSource.volume = heartbeatVolume * GetBusGain(GameAudioBus.Sfx);
 
         if (!heartbeatSource.isPlaying)
             heartbeatSource.Play();
@@ -163,7 +163,7 @@ public class S01Soundscape : MonoBehaviour
         if (clip == null || oneShotSource == null)
             return;
 
-        oneShotSource.PlayOneShot(clip, oneShotVolume * volumeMultiplier);
+        oneShotSource.PlayOneShot(clip, oneShotVolume * volumeMultiplier * GetBusGain(GameAudioBus.Sfx));
     }
 
     private void EnsureSources()
@@ -187,5 +187,10 @@ public class S01Soundscape : MonoBehaviour
         source.loop = looping;
         source.spatialBlend = 0f;
         return source;
+    }
+
+    private static float GetBusGain(GameAudioBus bus)
+    {
+        return GameAudio.GetVolume(GameAudioBus.Master) * GameAudio.GetVolume(bus);
     }
 }

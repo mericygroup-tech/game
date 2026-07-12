@@ -255,6 +255,7 @@ public sealed class BlessingChoiceUI : MonoBehaviour, IPointerEnterHandler, IPoi
         if (definition == null)
             return;
 
+        GameAudio.PlayBlessingSelect();
         onPreviewRequested?.Invoke(definition);
         if (button != null)
             button.interactable = false;
@@ -293,7 +294,10 @@ public sealed class BlessingChoiceUI : MonoBehaviour, IPointerEnterHandler, IPoi
         if (definition == null)
             return;
 
+        bool shouldPlayHover = !highlighted && (button == null || button.IsInteractable());
         highlighted = true;
+        if (shouldPlayHover)
+            GameAudio.PlayBlessingHover();
         onPreviewRequested?.Invoke(definition);
     }
 
