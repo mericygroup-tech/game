@@ -135,6 +135,7 @@ public sealed class S03ArenaDirector : MonoBehaviour
         arenaStarted = true;
         running = true;
         firstWaveDelayOverride = firstWaveDelay;
+        GameAudio.PlayMusic(GameMusicState.Combat, 0.7f);
         flowRoutine = StartCoroutine(ArenaFlow());
     }
 
@@ -159,6 +160,7 @@ public sealed class S03ArenaDirector : MonoBehaviour
             if (maxWaves > 0 && waveIndex >= maxWaves)
             {
                 SetStatus("Hoan thanh toan bo wave S03. Build cua ban da thanh hinh.");
+                GameAudio.PlayVictory();
                 yield break;
             }
 

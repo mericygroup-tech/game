@@ -10,9 +10,9 @@ public sealed class MainMenuButtonFX : MonoBehaviour, IPointerEnterHandler, IPoi
     [SerializeField] private Graphic glow;
     [SerializeField] private Color normalTextColor = new Color32(220, 194, 138, 255);
     [SerializeField] private Color hoverTextColor = Color.white;
-    [SerializeField] private Color normalFrameColor = new Color32(83, 53, 28, 190);
-    [SerializeField] private Color hoverFrameColor = new Color32(142, 32, 25, 235);
-    [SerializeField] private float hoverScale = 1.06f;
+    [SerializeField] private Color normalFrameColor = new Color32(25, 21, 17, 225);
+    [SerializeField] private Color hoverFrameColor = new Color32(142, 32, 25, 242);
+    [SerializeField] private float hoverScale = 1.045f;
     [SerializeField] private float transitionSpeed = 12f;
 
     private bool isHighlighted;
@@ -26,7 +26,7 @@ public sealed class MainMenuButtonFX : MonoBehaviour, IPointerEnterHandler, IPoi
 
         if (primary)
         {
-            normalFrameColor = new Color32(102, 26, 22, 220);
+            normalFrameColor = new Color32(112, 27, 20, 236);
             hoverFrameColor = new Color32(172, 41, 28, 245);
         }
     }

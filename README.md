@@ -2,6 +2,8 @@
 
 Prototype Unity 6 / URP cho game 3D third-person historical fantasy adventure **Dong Chay Anh Hung**.
 
+He thong music, ambience, combat SFX va UI SFX dung `GameAudioDirector` persistent; chi tiet mapping va cac tai nguyen con thieu nam trong `GAME_AUDIO_IMPLEMENTATION_REPORT.md`.
+
 ## Tong quan
 
 Game theo chan nhom hoc sinh hien dai bi cuon vao mot bien co lich su - ky ao. Prototype hien tai tap trung vao hai canh dau:

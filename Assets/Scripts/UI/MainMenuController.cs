@@ -9,6 +9,10 @@ using UnityEngine.UI;
 using UnityEditor;
 #endif
 
+/// <summary>
+/// Owns the main-menu presentation and scene flow. Visual construction stays in
+/// MainMenuBuilder so the generated scene remains reproducible and easy to debug.
+/// </summary>
 public sealed class MainMenuController : MonoBehaviour
 {
     [Header("Scene Flow")]
@@ -20,7 +24,7 @@ public sealed class MainMenuController : MonoBehaviour
     [SerializeField] private CanvasGroup menuGroup;
     [SerializeField] private CanvasGroup footerGroup;
     [SerializeField] private RectTransform swordRoot;
-    [SerializeField] private float introDuration = 1.6f;
+    [SerializeField, Min(0.8f)] private float introDuration = 2.15f;
 
     [Header("Buttons")]
     [SerializeField] private Button startButton;
@@ -40,15 +44,14 @@ public sealed class MainMenuController : MonoBehaviour
 
     [Header("Audio")]
     [SerializeField] private bool playIntroDrum = true;
-
-    [SerializeField, Range(0f, 1f)]
-    private float introDrumVolume = 0.45f;
+    [SerializeField, Range(0f, 1f)] private float introDrumVolume = 0.42f;
 
     private bool isTransitioning;
-
+    private bool introFinished;
     private Vector2 swordStartPosition;
     private Vector2 swordEndPosition;
-
+    private Vector2 menuEndPosition;
+    private Vector3 logoEndScale;
     private AudioSource audioSource;
     private AudioClip introDrumClip;
 
@@ -75,24 +78,17 @@ public sealed class MainMenuController : MonoBehaviour
         this.menuGroup = menuGroup;
         this.footerGroup = footerGroup;
         this.swordRoot = swordRoot;
-
         this.startButton = startButton;
         this.settingsButton = settingsButton;
         this.achievementsButton = achievementsButton;
         this.exitButton = exitButton;
         this.settingsCloseButton = settingsCloseButton;
         this.achievementsCloseButton = achievementsCloseButton;
-
         this.settingsPanel = settingsPanel;
         this.achievementsPanel = achievementsPanel;
-
         this.statusText = statusText;
         this.versionText = versionText;
-
-        this.startSceneName =
-            string.IsNullOrWhiteSpace(startSceneName)
-                ? "S01"
-                : startSceneName;
+        this.startSceneName = string.IsNullOrWhiteSpace(startSceneName) ? "S01" : startSceneName;
     }
 
     private void Awake()
@@ -102,45 +98,42 @@ public sealed class MainMenuController : MonoBehaviour
         AudioListener.volume = 1f;
 
         audioSource = GetComponent<AudioSource>();
-
         if (audioSource == null)
-        {
             audioSource = gameObject.AddComponent<AudioSource>();
-        }
 
         audioSource.playOnAwake = false;
         audioSource.loop = false;
-        audioSource.mute = false;
-        audioSource.volume = 1f;
-        audioSource.pitch = 1f;
         audioSource.spatialBlend = 0f;
 
         BindButtons();
-
         if (versionText != null)
-        {
             versionText.text = "v1.0.0";
-        }
 
-        if (settingsPanel != null)
-        {
-            settingsPanel.SetActive(false);
-        }
-
-        if (achievementsPanel != null)
-        {
-            achievementsPanel.SetActive(false);
-        }
+        ShowPanel(settingsPanel, false);
+        ShowPanel(achievementsPanel, false);
 
         if (swordRoot != null)
         {
             swordEndPosition = swordRoot.anchoredPosition;
+            swordStartPosition = swordEndPosition + new Vector2(-32f, 300f);
+            swordRoot.anchoredPosition = swordStartPosition;
+            swordRoot.localRotation = Quaternion.Euler(0f, 0f, -10f);
+        }
 
-            swordStartPosition =
-                swordEndPosition + new Vector2(-18f, 220f);
+        if (logoGroup != null)
+        {
+            logoEndScale = logoGroup.transform.localScale;
+            logoGroup.transform.localScale = logoEndScale * 0.91f;
+        }
 
-            swordRoot.anchoredPosition =
-                swordStartPosition;
+        if (menuGroup != null)
+        {
+            RectTransform rect = menuGroup.transform as RectTransform;
+            if (rect != null)
+            {
+                menuEndPosition = rect.anchoredPosition;
+                rect.anchoredPosition = menuEndPosition + new Vector2(0f, -28f);
+            }
         }
 
         SetGroup(blackFade, 1f, false);
@@ -152,112 +145,67 @@ public sealed class MainMenuController : MonoBehaviour
     private IEnumerator Start()
     {
         PlayIntroDrum();
-
         SetStatus("Âm trống Đông Sơn vang lên...");
 
-        yield return FadeGroup(
-            blackFade,
-            1f,
-            0f,
-            introDuration * 0.45f
-        );
-
-        yield return FadeGroup(
-            logoGroup,
-            0f,
-            1f,
-            introDuration * 0.35f
-        );
-
-        yield return AnimateSwordDrop(
-            introDuration * 0.35f
-        );
-
-        yield return FadeGroup(
-            menuGroup,
-            0f,
-            1f,
-            introDuration * 0.3f
-        );
-
-        yield return FadeGroup(
-            footerGroup,
-            0f,
-            1f,
-            introDuration * 0.2f
-        );
+        yield return new WaitForSecondsRealtime(0.18f);
+        yield return FadeGroup(blackFade, 1f, 0f, introDuration * 0.32f);
+        StartCoroutine(ScaleLogo(introDuration * 0.43f));
+        yield return FadeGroup(logoGroup, 0f, 1f, introDuration * 0.27f);
+        yield return AnimateSwordDrop(introDuration * 0.32f);
+        yield return RevealMenu(introDuration * 0.24f);
+        yield return FadeGroup(footerGroup, 0f, 1f, introDuration * 0.13f);
 
         SetGroup(menuGroup, 1f, true);
-
-        SetStatus("Chọn BẮT ĐẦU để vào game.");
-
+        introFinished = true;
+        SetStatus("Chọn BẮT ĐẦU để bước vào dòng chảy lịch sử.");
         SelectStartButton();
     }
 
     private void Update()
     {
+        if (introFinished && swordRoot != null && !isTransitioning)
+        {
+            float drift = Mathf.Sin(Time.unscaledTime * 0.65f) * 1.5f;
+            swordRoot.anchoredPosition = swordEndPosition + new Vector2(0f, drift);
+        }
+
         if (!Input.GetKeyDown(KeyCode.Escape))
-        {
             return;
-        }
 
-        if (settingsPanel != null &&
-            settingsPanel.activeSelf)
-        {
+        if (settingsPanel != null && settingsPanel.activeSelf)
             CloseSettings();
-            return;
-        }
-
-        if (achievementsPanel != null &&
-            achievementsPanel.activeSelf)
-        {
+        else if (achievementsPanel != null && achievementsPanel.activeSelf)
             CloseAchievements();
-            return;
-        }
-
-        ExitGame();
+        else if (introFinished)
+            ExitGame();
     }
 
     private void OnDestroy()
     {
         if (audioSource != null)
-        {
             audioSource.Stop();
-        }
-
         if (introDrumClip != null)
-        {
             Destroy(introDrumClip);
-            introDrumClip = null;
-        }
     }
 
     public void StartGame()
     {
-        if (isTransitioning)
-        {
-            return;
-        }
-
-        StartCoroutine(LoadStartScene());
+        if (!isTransitioning)
+            StartCoroutine(LoadStartScene());
     }
 
     public void OpenSettings()
     {
         ShowPanel(settingsPanel, true);
         ShowPanel(achievementsPanel, false);
-
-        SetStatus(
-            "Cài đặt sẽ nối âm lượng, đồ họa và điều khiển ở bước sau."
-        );
+        SetStatus("Cài đặt âm thanh, hình ảnh và điều khiển.");
+        SelectButton(settingsCloseButton);
     }
 
     public void CloseSettings()
     {
         ShowPanel(settingsPanel, false);
-
-        SetStatus("Chọn BẮT ĐẦU để vào game.");
-
+        SetStatus("Chọn BẮT ĐẦU để bước vào dòng chảy lịch sử.");
         SelectStartButton();
     }
 
@@ -265,25 +213,20 @@ public sealed class MainMenuController : MonoBehaviour
     {
         ShowPanel(achievementsPanel, true);
         ShowPanel(settingsPanel, false);
-
-        SetStatus(
-            "Thành tựu sẽ dùng cho tiến trình sau này."
-        );
+        SetStatus("Theo dõi những dấu ấn trên hành trình người anh hùng.");
+        SelectButton(achievementsCloseButton);
     }
 
     public void CloseAchievements()
     {
         ShowPanel(achievementsPanel, false);
-
-        SetStatus("Chọn BẮT ĐẦU để vào game.");
-
+        SetStatus("Chọn BẮT ĐẦU để bước vào dòng chảy lịch sử.");
         SelectStartButton();
     }
 
     public void ExitGame()
     {
-        SetStatus("Thoát game.");
-
+        SetStatus("Đang thoát game...");
 #if UNITY_EDITOR
         EditorApplication.isPlaying = false;
 #else
@@ -293,393 +236,185 @@ public sealed class MainMenuController : MonoBehaviour
 
     private void BindButtons()
     {
-        if (startButton != null)
-        {
-            startButton.onClick.RemoveListener(StartGame);
-            startButton.onClick.AddListener(StartGame);
-        }
+        Bind(startButton, StartGame);
+        Bind(settingsButton, OpenSettings);
+        Bind(achievementsButton, OpenAchievements);
+        Bind(exitButton, ExitGame);
+        Bind(settingsCloseButton, CloseSettings);
+        Bind(achievementsCloseButton, CloseAchievements);
+    }
 
-        if (settingsButton != null)
-        {
-            settingsButton.onClick.RemoveListener(OpenSettings);
-            settingsButton.onClick.AddListener(OpenSettings);
-        }
-
-        if (achievementsButton != null)
-        {
-            achievementsButton.onClick.RemoveListener(
-                OpenAchievements
-            );
-
-            achievementsButton.onClick.AddListener(
-                OpenAchievements
-            );
-        }
-
-        if (exitButton != null)
-        {
-            exitButton.onClick.RemoveListener(ExitGame);
-            exitButton.onClick.AddListener(ExitGame);
-        }
-
-        if (settingsCloseButton != null)
-        {
-            settingsCloseButton.onClick.RemoveListener(
-                CloseSettings
-            );
-
-            settingsCloseButton.onClick.AddListener(
-                CloseSettings
-            );
-        }
-
-        if (achievementsCloseButton != null)
-        {
-            achievementsCloseButton.onClick.RemoveListener(
-                CloseAchievements
-            );
-
-            achievementsCloseButton.onClick.AddListener(
-                CloseAchievements
-            );
-        }
+    private static void Bind(Button button, UnityEngine.Events.UnityAction action)
+    {
+        if (button == null)
+            return;
+        button.onClick.RemoveListener(action);
+        button.onClick.AddListener(action);
     }
 
     private IEnumerator LoadStartScene()
     {
         isTransitioning = true;
-
         if (startButton != null)
-        {
             startButton.interactable = false;
-        }
 
         SetGroup(menuGroup, 1f, false);
-        SetStatus("Đang tải video mở đầu...");
-
+        SetStatus("Đang mở chương đầu tiên...");
         if (EventSystem.current != null)
-        {
             EventSystem.current.SetSelectedGameObject(null);
-        }
 
-        yield return FadeGroup(
-            blackFade,
-            blackFade != null ? blackFade.alpha : 0f,
-            1f,
-            0.55f
-        );
+        yield return FadeGroup(blackFade, blackFade != null ? blackFade.alpha : 0f, 1f, 0.5f);
 
-        /*
-         * Dừng hoàn toàn âm thanh của Main Menu
-         * trước khi chuyển sang S01.
-         */
-        if (audioSource != null)
+        if (!string.IsNullOrWhiteSpace(startSceneName) && Application.CanStreamedLevelBeLoaded(startSceneName))
         {
-            audioSource.Stop();
-        }
-
-        if (introDrumClip != null)
-        {
-            Destroy(introDrumClip);
-            introDrumClip = null;
-        }
-
-        Time.timeScale = 1f;
-        AudioListener.pause = false;
-        AudioListener.volume = 1f;
-
-        /*
-         * Chờ Unity hoàn tất Destroy AudioClip,
-         * vẽ frame fade cuối và giải phóng tài nguyên menu.
-         */
-        yield return null;
-        yield return new WaitForEndOfFrame();
-        yield return new WaitForSecondsRealtime(0.25f);
-
-        if (string.IsNullOrWhiteSpace(startSceneName))
-        {
-            Debug.LogError(
-                "[Main Menu] Start scene name is empty.",
-                this
-            );
-
-            yield return RestoreMenuAfterLoadFailure();
+            SceneManager.LoadScene(startSceneName, LoadSceneMode.Single);
             yield break;
         }
 
-        if (!Application.CanStreamedLevelBeLoaded(
-                startSceneName))
-        {
-            Debug.LogError(
-                $"[Main Menu] Scene '{startSceneName}' " +
-                "is not included in Build Profiles.",
-                this
-            );
-
-            yield return RestoreMenuAfterLoadFailure();
-            yield break;
-        }
-
-        Debug.Log(
-            $"[Main Menu] Loading scene '{startSceneName}'.",
-            this
-        );
-
-        /*
-         * Tải scene đồng bộ.
-         * MainMenu được thay thế hoàn toàn trước khi
-         * VideoPlayer trong S01 bắt đầu Prepare.
-         */
-        SceneManager.LoadScene(
-            startSceneName,
-            LoadSceneMode.Single
-        );
-    }
-
-    private IEnumerator RestoreMenuAfterLoadFailure()
-    {
-        SetStatus("Không thể tải scene. Kiểm tra Build Profiles.");
-
-        yield return FadeGroup(
-            blackFade,
-            blackFade != null ? blackFade.alpha : 1f,
-            0f,
-            0.25f
-        );
-
+        Debug.LogError($"[Main Menu] Scene '{startSceneName}' is not included in Build Profiles.", this);
+        SetStatus("Không thể tải scene. Hãy kiểm tra Build Profiles.");
+        yield return FadeGroup(blackFade, 1f, 0f, 0.25f);
         SetGroup(menuGroup, 1f, true);
-
         if (startButton != null)
-        {
             startButton.interactable = true;
-        }
-
         isTransitioning = false;
-
         SelectStartButton();
     }
 
-    private IEnumerator AnimateSwordDrop(
-        float duration)
+    private IEnumerator AnimateSwordDrop(float duration)
     {
         if (swordRoot == null)
-        {
             yield break;
-        }
 
         float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = Mathf.Clamp01(elapsed / Mathf.Max(0.01f, duration));
+            float eased = 1f - Mathf.Pow(1f - t, 4f);
+            float overshoot = Mathf.Sin(t * Mathf.PI) * 13f * (1f - t);
+            swordRoot.anchoredPosition = Vector2.LerpUnclamped(swordStartPosition, swordEndPosition, eased) + new Vector2(0f, -overshoot);
+            swordRoot.localRotation = Quaternion.Euler(0f, 0f, Mathf.Lerp(-10f, 0f, eased));
+            yield return null;
+        }
+
+        swordRoot.anchoredPosition = swordEndPosition;
+        swordRoot.localRotation = Quaternion.identity;
+    }
+
+    private IEnumerator ScaleLogo(float duration)
+    {
+        if (logoGroup == null)
+            yield break;
+
+        Vector3 from = logoEndScale * 0.91f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            float t = 1f - Mathf.Pow(1f - Mathf.Clamp01(elapsed / duration), 3f);
+            logoGroup.transform.localScale = Vector3.LerpUnclamped(from, logoEndScale, t);
+            yield return null;
+        }
+        logoGroup.transform.localScale = logoEndScale;
+    }
+
+    private IEnumerator RevealMenu(float duration)
+    {
+        RectTransform rect = menuGroup != null ? menuGroup.transform as RectTransform : null;
+        Vector2 from = menuEndPosition + new Vector2(0f, -28f);
+        float elapsed = 0f;
+        if (menuGroup != null)
+            menuGroup.alpha = 0f;
 
         while (elapsed < duration)
         {
             elapsed += Time.unscaledDeltaTime;
-
-            float t =
-                Mathf.Clamp01(elapsed / duration);
-
-            t =
-                1f - Mathf.Pow(1f - t, 3f);
-
-            swordRoot.anchoredPosition =
-                Vector2.LerpUnclamped(
-                    swordStartPosition,
-                    swordEndPosition,
-                    t
-                );
-
-            swordRoot.localRotation =
-                Quaternion.Euler(
-                    0f,
-                    0f,
-                    Mathf.Lerp(-8f, 0f, t)
-                );
-
+            float t = 1f - Mathf.Pow(1f - Mathf.Clamp01(elapsed / Mathf.Max(0.01f, duration)), 3f);
+            if (menuGroup != null)
+                menuGroup.alpha = t;
+            if (rect != null)
+                rect.anchoredPosition = Vector2.LerpUnclamped(from, menuEndPosition, t);
             yield return null;
         }
-
-        swordRoot.anchoredPosition =
-            swordEndPosition;
-
-        swordRoot.localRotation =
-            Quaternion.identity;
     }
 
-    private IEnumerator FadeGroup(
-        CanvasGroup group,
-        float from,
-        float to,
-        float duration)
+    private static IEnumerator FadeGroup(CanvasGroup group, float from, float to, float duration)
     {
         if (group == null)
-        {
             yield break;
-        }
-
-        float safeDuration =
-            Mathf.Max(0.01f, duration);
 
         float elapsed = 0f;
-
+        float safeDuration = Mathf.Max(0.01f, duration);
         group.alpha = from;
-
         while (elapsed < safeDuration)
         {
             elapsed += Time.unscaledDeltaTime;
-
-            float t =
-                Mathf.Clamp01(
-                    elapsed / safeDuration
-                );
-
-            group.alpha =
-                Mathf.Lerp(from, to, t);
-
+            group.alpha = Mathf.Lerp(from, to, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / safeDuration)));
             yield return null;
         }
-
         group.alpha = to;
     }
 
-    private void ShowPanel(
-        GameObject panel,
-        bool show)
+    private static void ShowPanel(GameObject panel, bool show)
     {
         if (panel != null)
-        {
             panel.SetActive(show);
-        }
     }
 
     private void SelectStartButton()
     {
-        if (startButton != null &&
-            EventSystem.current != null)
-        {
-            EventSystem.current.SetSelectedGameObject(
-                startButton.gameObject
-            );
-        }
+        SelectButton(startButton);
     }
 
-    private void SetStatus(
-        string message)
+    private static void SelectButton(Button button)
+    {
+        if (button != null && EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(button.gameObject);
+    }
+
+    private void SetStatus(string message)
     {
         if (statusText != null)
-        {
             statusText.text = message;
-        }
     }
 
     private void PlayIntroDrum()
     {
-        if (!playIntroDrum ||
-            audioSource == null)
-        {
+        if (!playIntroDrum || audioSource == null)
             return;
-        }
-
-        if (introDrumClip == null)
-        {
-            introDrumClip =
-                CreateIntroDrumClip();
-        }
-
-        audioSource.PlayOneShot(
-            introDrumClip,
-            introDrumVolume
-        );
+        introDrumClip = CreateIntroDrumClip();
+        audioSource.PlayOneShot(introDrumClip, introDrumVolume);
     }
 
     private static AudioClip CreateIntroDrumClip()
     {
         const int sampleRate = 44100;
-        const float duration = 0.85f;
-
-        int sampleCount =
-            Mathf.RoundToInt(
-                sampleRate * duration
-            );
-
-        float[] data =
-            new float[sampleCount];
+        const float duration = 0.92f;
+        int sampleCount = Mathf.RoundToInt(sampleRate * duration);
+        float[] data = new float[sampleCount];
 
         for (int i = 0; i < sampleCount; i++)
         {
-            float t =
-                i / (float)sampleRate;
-
-            float attack =
-                Mathf.Clamp01(
-                    t / 0.018f
-                );
-
-            float decay =
-                Mathf.Exp(-5.4f * t);
-
-            float pitch =
-                Mathf.Lerp(
-                    96f,
-                    48f,
-                    t / duration
-                );
-
-            float body =
-                Mathf.Sin(
-                    2f *
-                    Mathf.PI *
-                    pitch *
-                    t
-                );
-
-            float lowBody =
-                Mathf.Sin(
-                    2f *
-                    Mathf.PI *
-                    54f *
-                    t
-                ) * 0.45f;
-
-            float noise =
-                (
-                    Mathf.PerlinNoise(
-                        t * 92f,
-                        0.37f
-                    ) - 0.5f
-                ) * 0.22f;
-
-            data[i] =
-                (
-                    body * 0.75f +
-                    lowBody +
-                    noise
-                ) *
-                attack *
-                decay;
+            float t = i / (float)sampleRate;
+            float attack = Mathf.Clamp01(t / 0.014f);
+            float decay = Mathf.Exp(-5.1f * t);
+            float pitch = Mathf.Lerp(102f, 47f, t / duration);
+            float body = Mathf.Sin(2f * Mathf.PI * pitch * t);
+            float lowBody = Mathf.Sin(2f * Mathf.PI * 52f * t) * 0.5f;
+            float noise = (Mathf.PerlinNoise(t * 96f, 0.37f) - 0.5f) * 0.2f;
+            data[i] = (body * 0.73f + lowBody + noise) * attack * decay;
         }
 
-        AudioClip clip =
-            AudioClip.Create(
-                "MainMenu_DongSonDrum",
-                sampleCount,
-                1,
-                sampleRate,
-                false
-            );
-
+        AudioClip clip = AudioClip.Create("MainMenu_DongSonDrum", sampleCount, 1, sampleRate, false);
         clip.SetData(data, 0);
-
         return clip;
     }
 
-    private static void SetGroup(
-        CanvasGroup group,
-        float alpha,
-        bool interactive)
+    private static void SetGroup(CanvasGroup group, float alpha, bool interactive)
     {
         if (group == null)
-        {
             return;
-        }
-
         group.alpha = alpha;
         group.interactable = interactive;
         group.blocksRaycasts = interactive;
