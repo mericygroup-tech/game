@@ -1,0 +1,276 @@
+using System.Collections;
+using UnityEngine;
+using UnityEngine.SceneManagement;
+using UnityEngine.UI;
+using UnityEngine.Video;
+
+public sealed class S01VideoSequenceController : MonoBehaviour
+{
+    [SerializeField] private VideoPlayer videoPlayer;
+    [SerializeField] private VideoClip introClip;
+    [SerializeField] private RawImage videoDisplay;
+    [SerializeField] private CanvasGroup fadeOverlay;
+    [SerializeField] private RenderTexture targetTexture;
+    [SerializeField] private string nextSceneName = "S03";
+    [SerializeField] private float fadeDuration = 0.5f;
+    [SerializeField] private bool allowSkip = true;
+
+    private bool videoFinished;
+    private bool loadingNextScene;
+    private bool loopPointRegistered;
+
+    private IEnumerator Start()
+    {
+        Time.timeScale = 1f;
+        EnsureReferences();
+        ConfigureFadeOverlay();
+        ConfigureVideoPlayback();
+
+        if (!ValidateReferences())
+            yield break;
+
+        yield return PrepareAndWait();
+        if (loadingNextScene || !videoPlayer.isPrepared)
+            yield break;
+
+        yield return Fade(1f, 0f);
+        yield return PlayPreparedVideo();
+
+        if (loadingNextScene)
+            yield break;
+
+        videoPlayer.Stop();
+        yield return Fade(0f, 1f);
+        LoadNextScene();
+    }
+
+    private void Update()
+    {
+        if (!allowSkip || loadingNextScene)
+            return;
+
+        if (Input.GetKeyDown(KeyCode.Escape) ||
+            Input.GetKeyDown(KeyCode.Space) ||
+            Input.GetKeyDown(KeyCode.Return))
+        {
+            LoadNextScene();
+        }
+    }
+
+    private void OnDisable()
+    {
+        UnregisterLoopPoint();
+    }
+
+    private void EnsureReferences()
+    {
+        if (videoPlayer == null)
+        {
+            GameObject playerObject = GameObject.Find("VideoPlayer_1");
+            if (playerObject != null)
+                videoPlayer = playerObject.GetComponent<VideoPlayer>();
+        }
+
+        Canvas canvas = Object.FindAnyObjectByType<Canvas>();
+        if (videoDisplay == null && canvas != null)
+        {
+            Transform displayTransform = canvas.transform.Find("VideoRawImage");
+            if (displayTransform != null)
+                videoDisplay = displayTransform.GetComponent<RawImage>();
+        }
+
+        if (fadeOverlay == null && canvas != null)
+        {
+            Transform fadeTransform = canvas.transform.Find("FadeOverlay");
+            if (fadeTransform != null)
+                fadeOverlay = fadeTransform.GetComponent<CanvasGroup>();
+        }
+
+        if (targetTexture == null && videoDisplay != null)
+            targetTexture = videoDisplay.texture as RenderTexture;
+
+        if (targetTexture == null && videoPlayer != null)
+            targetTexture = videoPlayer.targetTexture;
+    }
+
+    private void ConfigureFadeOverlay()
+    {
+        if (fadeOverlay == null)
+            return;
+
+        fadeOverlay.alpha = 1f;
+        fadeOverlay.interactable = false;
+        fadeOverlay.blocksRaycasts = false;
+
+        Image fadeImage = fadeOverlay.GetComponent<Image>();
+        if (fadeImage != null)
+        {
+            fadeImage.color = Color.black;
+            fadeImage.raycastTarget = false;
+        }
+    }
+
+    private void ConfigureVideoPlayback()
+    {
+        if (videoPlayer == null)
+            return;
+
+        videoPlayer.playOnAwake = false;
+        videoPlayer.waitForFirstFrame = true;
+        videoPlayer.skipOnDrop = true;
+        videoPlayer.isLooping = false;
+        videoPlayer.source = VideoSource.VideoClip;
+        if (introClip != null)
+            videoPlayer.clip = introClip;
+        videoPlayer.renderMode = VideoRenderMode.RenderTexture;
+        videoPlayer.targetTexture = targetTexture;
+        ConfigureVideoAudio(videoPlayer);
+
+        if (videoDisplay != null && targetTexture != null)
+        {
+            videoDisplay.texture = targetTexture;
+            videoDisplay.color = Color.white;
+            videoDisplay.raycastTarget = false;
+            videoDisplay.gameObject.SetActive(true);
+        }
+    }
+
+    private IEnumerator PrepareAndWait()
+    {
+        videoPlayer.Prepare();
+
+        float timeoutAt = Time.realtimeSinceStartup + 15f;
+        while (!videoPlayer.isPrepared && Time.realtimeSinceStartup < timeoutAt && !loadingNextScene)
+            yield return null;
+
+        if (!videoPlayer.isPrepared && !loadingNextScene)
+            Debug.LogError("S01 intro video did not prepare in time: " + videoPlayer.name, this);
+    }
+
+    private IEnumerator PlayPreparedVideo()
+    {
+        videoFinished = false;
+        RegisterLoopPoint();
+
+        videoPlayer.Play();
+        while (!videoFinished && !loadingNextScene)
+            yield return null;
+
+        UnregisterLoopPoint();
+    }
+
+    private void RegisterLoopPoint()
+    {
+        if (videoPlayer == null || loopPointRegistered)
+            return;
+
+        videoPlayer.loopPointReached += HandleVideoFinished;
+        loopPointRegistered = true;
+    }
+
+    private void UnregisterLoopPoint()
+    {
+        if (videoPlayer == null || !loopPointRegistered)
+            return;
+
+        videoPlayer.loopPointReached -= HandleVideoFinished;
+        loopPointRegistered = false;
+    }
+
+    private void HandleVideoFinished(VideoPlayer source)
+    {
+        videoFinished = true;
+    }
+
+    private IEnumerator Fade(float from, float to)
+    {
+        if (fadeOverlay == null)
+            yield break;
+
+        float duration = Mathf.Max(0.01f, fadeDuration);
+        float elapsed = 0f;
+        fadeOverlay.alpha = from;
+
+        while (elapsed < duration && !loadingNextScene)
+        {
+            elapsed += Time.unscaledDeltaTime;
+            fadeOverlay.alpha = Mathf.Lerp(from, to, Mathf.Clamp01(elapsed / duration));
+            yield return null;
+        }
+
+        if (!loadingNextScene)
+            fadeOverlay.alpha = to;
+    }
+
+    private static void ConfigureVideoAudio(VideoPlayer player)
+    {
+        if (player == null)
+            return;
+
+        player.audioOutputMode = VideoAudioOutputMode.Direct;
+        player.controlledAudioTrackCount = 1;
+        player.EnableAudioTrack(0, true);
+        player.SetDirectAudioMute(0, false);
+        player.SetDirectAudioVolume(0, 1f);
+    }
+
+    private bool ValidateReferences()
+    {
+        bool valid = true;
+
+        if (videoPlayer == null)
+        {
+            Debug.LogError("S01VideoSequenceController missing videoPlayer.", this);
+            valid = false;
+        }
+        else if (videoPlayer.clip == null)
+        {
+            Debug.LogError("S01VideoSequenceController videoPlayer has no clip.", this);
+            valid = false;
+        }
+
+        if (introClip == null)
+        {
+            Debug.LogError("S01VideoSequenceController missing introClip.", this);
+            valid = false;
+        }
+
+        if (videoDisplay == null)
+        {
+            Debug.LogError("S01VideoSequenceController missing videoDisplay RawImage.", this);
+            valid = false;
+        }
+
+        if (targetTexture == null)
+        {
+            Debug.LogError("S01VideoSequenceController missing targetTexture.", this);
+            valid = false;
+        }
+
+        if (fadeOverlay == null)
+        {
+            Debug.LogError("S01VideoSequenceController missing fadeOverlay CanvasGroup.", this);
+            valid = false;
+        }
+
+        return valid;
+    }
+
+    private void LoadNextScene()
+    {
+        if (loadingNextScene)
+            return;
+
+        loadingNextScene = true;
+        Time.timeScale = 1f;
+        UnregisterLoopPoint();
+
+        if (string.IsNullOrWhiteSpace(nextSceneName))
+        {
+            Debug.LogError("S01VideoSequenceController has no next scene name.", this);
+            return;
+        }
+
+        SceneManager.LoadScene(nextSceneName);
+    }
+}

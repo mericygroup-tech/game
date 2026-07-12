@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 518eeb140ed3a204eb65d0841a3a2794, type: 3}
+  m_Name: TN_BongChienTruong
+  m_EditorClassIdentifier: Assembly-CSharp::BlessingDefinition
+  id: tn_bong_chien_truong
+  displayName: "B\xF3ng Chi\u1EBFn Tr\u01B0\u1EDDng"
+  heroType: 2
+  icon: {fileID: 0}
+  description: Dash tao phan than ngan han lam roi loan ke dich.
+  rarity: 2
+  maxStack: 3
+  effectType: 13
+  ultimate: 0

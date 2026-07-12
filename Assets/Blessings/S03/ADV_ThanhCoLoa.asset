@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 518eeb140ed3a204eb65d0841a3a2794, type: 3}
+  m_Name: ADV_ThanhCoLoa
+  m_EditorClassIdentifier: Assembly-CSharp::BlessingDefinition
+  id: adv_thanh_co_loa
+  displayName: "Th\xE0nh C\u1ED5 Loa"
+  heroType: 0
+  icon: {fileID: 0}
+  description: 'Ultimate: dinh ky tao la chan dien rong bao ve ban than.'
+  rarity: 3
+  maxStack: 1
+  effectType: 4
+  ultimate: 1

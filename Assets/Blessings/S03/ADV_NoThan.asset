@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 518eeb140ed3a204eb65d0841a3a2794, type: 3}
+  m_Name: ADV_NoThan
+  m_EditorClassIdentifier: Assembly-CSharp::BlessingDefinition
+  id: adv_no_than
+  displayName: "N\u1ECF Th\u1EA7n"
+  heroType: 0
+  icon: {fileID: 21300000, guid: c1c96ddc908edba4a9c9c6ecdf4db008, type: 3}
+  description: Moi don danh thu 5 ban them 3 mui ten nang luong.
+  rarity: 1
+  maxStack: 3
+  effectType: 1
+  ultimate: 0
