@@ -82,4 +82,13 @@ public static class GameAudio
     {
         GameAudioDirector.Instance?.SetVolume(bus, Mathf.Clamp01(normalizedVolume));
     }
+
+    /// <summary>
+    /// Applies a temporary, non-persistent multiplier to music only. UI and SFX
+    /// volumes are intentionally unchanged while gameplay is paused.
+    /// </summary>
+    public static void SetMusicDuck(float multiplier)
+    {
+        GameAudioDirector.Instance?.SetMusicDuck(Mathf.Clamp01(multiplier));
+    }
 }

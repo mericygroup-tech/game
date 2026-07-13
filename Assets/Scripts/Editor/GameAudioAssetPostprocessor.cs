@@ -30,7 +30,7 @@ public static class GameAudioBuildValidator
 {
     private static readonly string[] RequiredClipPaths =
     {
-        "Assets/Resources/Audio/Music/MUSIC_MainTheme_VietnamHeroic.mp3",
+        "Assets/Resources/Audio/Music/MUSIC_MainMenu_VietNamHistoricVictory.mp3",
         "Assets/Resources/Audio/Music/SFX_WarDrums_Loop.wav",
         "Assets/Resources/Audio/Music/MUSIC_Battle_Pursuit.wav",
         "Assets/Resources/Audio/Music/MUSIC_FinalBoss_Epic.wav",

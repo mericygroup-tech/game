@@ -44,11 +44,13 @@ public sealed class GameAudioDirector : MonoBehaviour
     private float ambienceVolume;
     private float sfxVolume;
     private float uiVolume;
+    private float musicDuckMultiplier = 1f;
 
     public static GameAudioDirector Instance { get; private set; }
 
     public GameMusicState CurrentMusicState => currentMusicState;
     public GameAmbientState CurrentAmbientState => currentAmbientState;
+    public float MusicDuckMultiplier => musicDuckMultiplier;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     private static void Bootstrap()
@@ -110,7 +112,7 @@ public sealed class GameAudioDirector : MonoBehaviour
         if (clip == null || state == GameMusicState.None)
         {
             activeMusicSource = null;
-            musicFadeRoutine = StartCoroutine(FadeMusic(outgoing, null, Mathf.Max(0f, fadeDuration), 0f));
+            musicFadeRoutine = StartCoroutine(FadeMusic(outgoing, null, Mathf.Max(0f, fadeDuration)));
             return;
         }
 
@@ -121,8 +123,7 @@ public sealed class GameAudioDirector : MonoBehaviour
         incoming.Play();
 
         activeMusicSource = incoming;
-        float targetVolume = GetBusGain(GameAudioBus.Music) * spec.Gain;
-        musicFadeRoutine = StartCoroutine(FadeMusic(outgoing, incoming, Mathf.Max(0f, fadeDuration), targetVolume));
+        musicFadeRoutine = StartCoroutine(FadeMusic(outgoing, incoming, Mathf.Max(0f, fadeDuration)));
     }
 
     public void PlayAmbient(GameAmbientState state, float fadeDuration = 0.55f)
@@ -251,6 +252,15 @@ public sealed class GameAudioDirector : MonoBehaviour
         RefreshLoopVolumes();
     }
 
+    /// <summary>
+    /// Temporarily lowers music without changing the player's saved setting.
+    /// </summary>
+    public void SetMusicDuck(float multiplier)
+    {
+        musicDuckMultiplier = Mathf.Clamp01(multiplier);
+        RefreshLoopVolumes();
+    }
+
     private void HandleSceneLoaded(Scene scene, LoadSceneMode mode)
     {
         RouteScene(scene);
@@ -319,7 +329,7 @@ public sealed class GameAudioDirector : MonoBehaviour
         AudioUiFeedbackInstaller.Install();
     }
 
-    private IEnumerator FadeMusic(AudioSource outgoing, AudioSource incoming, float duration, float targetVolume)
+    private IEnumerator FadeMusic(AudioSource outgoing, AudioSource incoming, float duration)
     {
         float outgoingStart = outgoing != null ? outgoing.volume : 0f;
         float incomingStart = incoming != null ? incoming.volume : 0f;
@@ -333,7 +343,7 @@ public sealed class GameAudioDirector : MonoBehaviour
             }
 
             if (incoming != null)
-                incoming.volume = targetVolume;
+                incoming.volume = GetBusGain(GameAudioBus.Music) * currentMusicGain;
 
             musicFadeRoutine = null;
             yield break;
@@ -349,7 +359,10 @@ public sealed class GameAudioDirector : MonoBehaviour
             if (outgoing != null)
                 outgoing.volume = Mathf.Lerp(outgoingStart, 0f, eased);
             if (incoming != null)
+            {
+                float targetVolume = GetBusGain(GameAudioBus.Music) * currentMusicGain;
                 incoming.volume = Mathf.Lerp(incomingStart, targetVolume, eased);
+            }
 
             yield return null;
         }
@@ -362,7 +375,7 @@ public sealed class GameAudioDirector : MonoBehaviour
         }
 
         if (incoming != null)
-            incoming.volume = targetVolume;
+            incoming.volume = GetBusGain(GameAudioBus.Music) * currentMusicGain;
 
         musicFadeRoutine = null;
     }
@@ -486,7 +499,8 @@ public sealed class GameAudioDirector : MonoBehaviour
 
     private float GetBusGain(GameAudioBus bus)
     {
-        return masterVolume * GetVolume(bus);
+        float gain = masterVolume * GetVolume(bus);
+        return bus == GameAudioBus.Music ? gain * musicDuckMultiplier : gain;
     }
 
     private void RefreshLoopVolumes()
@@ -545,7 +559,7 @@ public sealed class GameAudioDirector : MonoBehaviour
         switch (state)
         {
             case GameMusicState.MainMenu:
-                return new MusicSpec(true, 0.68f, ResourceRoot + "Music/MUSIC_MainTheme_VietnamHeroic");
+                return new MusicSpec(true, 0.68f, ResourceRoot + "Music/MUSIC_MainMenu_VietNamHistoricVictory");
             case GameMusicState.Intro:
                 return new MusicSpec(true, 0.34f, ResourceRoot + "Music/MUSIC_Intro_VietnamFlute");
             case GameMusicState.PreCombat:

@@ -4,32 +4,78 @@ using UnityEngine.UI;
 
 [DisallowMultipleComponent]
 [RequireComponent(typeof(Button))]
-public sealed class AudioButtonFeedback : MonoBehaviour, IPointerClickHandler, ISubmitHandler
+public sealed class AudioButtonFeedback : MonoBehaviour,
+    IPointerClickHandler,
+    IPointerEnterHandler,
+    ISelectHandler,
+    ISubmitHandler
 {
+    [SerializeField] private bool playHoverFeedback;
+
     private Button button;
+
+    public bool HoverFeedbackEnabled => playHoverFeedback;
 
     private void Awake()
     {
-        button = GetComponent<Button>();
+        ResolveButton();
+    }
+
+    /// <summary>
+    /// Hover/select feedback is opt-in so menus with their own specialized
+    /// audio components cannot accidentally play the same sound twice.
+    /// </summary>
+    public void Configure(bool enableHoverFeedback)
+    {
+        playHoverFeedback = enableHoverFeedback;
+        ResolveButton();
     }
 
     public void OnPointerClick(PointerEventData eventData)
     {
-        PlayIfInteractable();
+        PlayClickIfInteractable();
+    }
+
+    public void OnPointerEnter(PointerEventData eventData)
+    {
+        PlayHoverIfInteractable();
+    }
+
+    public void OnSelect(BaseEventData eventData)
+    {
+        PlayHoverIfInteractable();
     }
 
     public void OnSubmit(BaseEventData eventData)
     {
-        PlayIfInteractable();
+        PlayClickIfInteractable();
     }
 
-    private void PlayIfInteractable()
+    private void PlayClickIfInteractable()
     {
-        if (UsesSpecializedBlessingFeedback())
-            return;
-
-        if (button != null && button.IsActive() && button.IsInteractable())
+        if (CanPlayFeedback())
             GameAudio.PlayUiClick();
+    }
+
+    private void PlayHoverIfInteractable()
+    {
+        if (playHoverFeedback && CanPlayFeedback())
+            GameAudio.PlayUiHover();
+    }
+
+    private bool CanPlayFeedback()
+    {
+        ResolveButton();
+        return !UsesSpecializedBlessingFeedback() &&
+               button != null &&
+               button.IsActive() &&
+               button.IsInteractable();
+    }
+
+    private void ResolveButton()
+    {
+        if (button == null)
+            button = GetComponent<Button>();
     }
 
     private bool UsesSpecializedBlessingFeedback()
