@@ -46,7 +46,7 @@ public class PlayerHealth3D : MonoBehaviour
 
     public void TakeDamage(int damage)
     {
-        if (isDead)
+        if (isDead || PauseManager.IsGamePaused)
             return;
 
         if (playerController != null && playerController.IsDashing && playerController.dashInvincible)
