@@ -814,6 +814,10 @@ public sealed class S03IntroDirector : MonoBehaviour
                 gameplayCameraPitch,
                 gameplayCameraShoulderOffset,
                 gameplayCameraDamping);
+
+            // Enable free-look and lock the cursor for gameplay
+            gameplayCameraController.fixedAngle = false;
+            gameplayCameraController.lockCursor = true;
         }
 
         if (gameplayCamera != null)

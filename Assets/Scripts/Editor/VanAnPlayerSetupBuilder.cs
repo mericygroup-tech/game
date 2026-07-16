@@ -536,10 +536,10 @@ public static class VanAnPlayerSetupBuilder
                 changed = true;
             }
 
-            camera.fixedAngle = true;
+            camera.fixedAngle = false;
             camera.fixedYaw = 45f;
             camera.fixedPitch = 58f;
-            camera.lockCursor = false;
+            camera.lockCursor = true;
             camera.distance = 4.8f;
             camera.height = 4f;
             camera.smoothSpeed = 8f;

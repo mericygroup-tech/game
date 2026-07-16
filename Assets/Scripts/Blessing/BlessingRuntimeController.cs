@@ -112,7 +112,23 @@ public sealed class BlessingRuntimeController : MonoBehaviour
 
         Cursor.visible = enabled;
         if (enabled)
+        {
             Cursor.lockState = CursorLockMode.None;
+        }
+        else
+        {
+            ThirdPersonCamera cam = Camera.main != null ? Camera.main.GetComponent<ThirdPersonCamera>() : null;
+            if (cam != null)
+            {
+                Cursor.lockState = cam.lockCursor ? CursorLockMode.Locked : CursorLockMode.None;
+                Cursor.visible = !cam.lockCursor;
+            }
+            else
+            {
+                Cursor.lockState = CursorLockMode.Locked;
+                Cursor.visible = false;
+            }
+        }
     }
 
     public void ApplyBlessing(BlessingDefinition blessing, int newStack)

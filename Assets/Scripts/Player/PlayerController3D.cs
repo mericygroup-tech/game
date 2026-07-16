@@ -16,6 +16,7 @@ public class PlayerController3D : MonoBehaviour
 
     [Header("Camera")]
     public Transform cameraTransform;
+    public bool alwaysFaceCamera = true;
 
     [Header("Dash Settings")]
     public bool enableDash = true;
@@ -94,6 +95,9 @@ public class PlayerController3D : MonoBehaviour
         if (controller == null || !controller.enabled)
             return;
 
+        if (cameraTransform == null && Camera.main != null)
+            cameraTransform = Camera.main.transform;
+
         // Process buffer
         if (dashBuffered)
         {
@@ -133,16 +137,53 @@ public class PlayerController3D : MonoBehaviour
         Vector3 moveDirection = GetWasdMoveDirection();
         float currentSpeed = moveSpeed * GetTemporarySpeedMultiplier();
 
-        if (!InputLocked && !IsStunned && moveDirection.magnitude >= 0.1f)
+        if (!InputLocked && !IsStunned)
         {
-            controller.Move(moveDirection * currentSpeed * Time.deltaTime);
+            if (moveDirection.magnitude >= 0.1f)
+            {
+                controller.Move(moveDirection * currentSpeed * Time.deltaTime);
+            }
 
-            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
-            transform.rotation = Quaternion.Slerp(
-                transform.rotation,
-                targetRotation,
-                rotationSpeed * Time.deltaTime
-            );
+            // Handle rotation
+            bool shouldFaceCamera = alwaysFaceCamera;
+            if (shouldFaceCamera && cameraTransform != null)
+            {
+                ThirdPersonCamera cam = cameraTransform.GetComponent<ThirdPersonCamera>();
+                if (cam != null && cam.fixedAngle)
+                {
+                    shouldFaceCamera = false;
+                }
+            }
+
+            if (shouldFaceCamera)
+            {
+                if (cameraTransform != null)
+                {
+                    Vector3 cameraForward = cameraTransform.forward;
+                    cameraForward.y = 0f;
+                    if (cameraForward.sqrMagnitude > 0.001f)
+                    {
+                        Quaternion targetRotation = Quaternion.LookRotation(cameraForward.normalized);
+                        transform.rotation = Quaternion.Slerp(
+                            transform.rotation,
+                            targetRotation,
+                            rotationSpeed * Time.deltaTime
+                        );
+                    }
+                }
+            }
+            else
+            {
+                if (moveDirection.magnitude >= 0.1f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+                    transform.rotation = Quaternion.Slerp(
+                        transform.rotation,
+                        targetRotation,
+                        rotationSpeed * Time.deltaTime
+                    );
+                }
+            }
         }
 
         bool grounded = controller.isGrounded;
@@ -386,6 +427,13 @@ public class PlayerController3D : MonoBehaviour
         Camera mainCamera = Camera.main;
         if (mainCamera != null)
         {
+            if (Cursor.lockState == CursorLockMode.Locked)
+            {
+                Vector3 camForward = mainCamera.transform.forward;
+                camForward.y = 0f;
+                return camForward.normalized;
+            }
+
             Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
             Plane playerPlane = new Plane(Vector3.up, transform.position);
             if (playerPlane.Raycast(ray, out float enter))

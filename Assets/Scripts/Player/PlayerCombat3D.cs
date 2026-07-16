@@ -254,6 +254,13 @@ public class PlayerCombat3D : MonoBehaviour
 
         if (aimCamera != null)
         {
+            if (Cursor.lockState == CursorLockMode.Locked)
+            {
+                Vector3 camForward = aimCamera.transform.forward;
+                camForward.y = 0f;
+                return camForward.normalized;
+            }
+
             Ray ray = aimCamera.ScreenPointToRay(Input.mousePosition);
             if (Physics.Raycast(ray, out RaycastHit hit, 120f, aimGroundMask, QueryTriggerInteraction.Ignore))
             {

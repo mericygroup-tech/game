@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
 
 public sealed class S03ArenaDirector : MonoBehaviour
 {
@@ -15,7 +16,7 @@ public sealed class S03ArenaDirector : MonoBehaviour
     [SerializeField] private TMP_Text statusText;
 
     [Header("Startup")]
-    [SerializeField] private bool autoStartOnSceneLoad = true;
+    public bool autoStartOnSceneLoad = true;
 
     [Header("Wave Tuning")]
     [SerializeField] private int firstWaveEnemyCount = 3;
@@ -56,6 +57,15 @@ public sealed class S03ArenaDirector : MonoBehaviour
             BeginArena();
         else if (preparedForIntro)
             ClearIntroBlockedLabels();
+    }
+
+    private void Update()
+    {
+        if (!arenaStarted && Input.GetKeyDown(KeyCode.K))
+        {
+            Debug.Log("S03ArenaDirector: Manual start triggered by key press (K)!");
+            BeginArena();
+        }
     }
 
     public void Configure(
@@ -191,14 +201,29 @@ public sealed class S03ArenaDirector : MonoBehaviour
             1,
             Mathf.Max(1, maxEnemiesPerWave));
 
-        SetWaveText("Wave " + currentWave);
-        SetStatus("Wave " + currentWave + ": ha " + enemyCount + " ke dich.");
+        if (currentWave == 8)
+        {
+            enemyCount = 1;
+            SetWaveText("WAVE 8: TRÙM CUỐI");
+            SetStatus("CẢNH BÁO: Hắc Tinh Vương khổng lồ xuất hiện!");
+        }
+        else
+        {
+            SetWaveText("Wave " + currentWave);
+            SetStatus("Wave " + currentWave + ": ha " + enemyCount + " ke dich.");
+        }
 
         for (int i = 0; i < enemyCount; i++)
         {
             MinionHealth3D enemy = SpawnEnemy(currentWave, i, enemyCount);
             if (enemy != null)
+            {
                 activeEnemies.Add(enemy);
+                if (currentWave == 8)
+                {
+                    CreateBossHealthBar(enemy);
+                }
+            }
 
             yield return new WaitForSeconds(0.18f);
         }
@@ -240,7 +265,34 @@ public sealed class S03ArenaDirector : MonoBehaviour
             ? Instantiate(minionPrefab)
             : GameObject.CreatePrimitive(PrimitiveType.Capsule);
 
-        enemy.name = "S03_Wave" + currentWave.ToString("00") + "_Enemy" + (spawnIndex + 1).ToString("00");
+        enemy.SetActive(true);
+
+        bool isBoss = (currentWave == 8);
+
+        if (isBoss)
+        {
+            enemy.name = "S03_BOSS_HacTinh";
+            enemy.transform.localScale = Vector3.one * 2.5f;
+
+            CharacterController cc = enemy.GetComponent<CharacterController>();
+            if (cc != null)
+            {
+                cc.height *= 2.5f;
+                cc.radius *= 2.5f;
+                cc.center = new Vector3(cc.center.x, cc.center.y * 2.5f, cc.center.z);
+            }
+
+            MinionHealthBarUI healthBar = enemy.GetComponentInChildren<MinionHealthBarUI>(true);
+            if (healthBar != null)
+            {
+                healthBar.gameObject.SetActive(true);
+            }
+        }
+        else
+        {
+            enemy.name = "S03_Wave" + currentWave.ToString("00") + "_Enemy" + (spawnIndex + 1).ToString("00");
+        }
+
         enemy.tag = "Enemy";
         SetLayerRecursively(enemy, LayerMask.NameToLayer("Enemy"));
         enemy.transform.position = GetSpawnPosition(currentWave, spawnIndex, enemyCount);
@@ -250,7 +302,8 @@ public sealed class S03ArenaDirector : MonoBehaviour
         if (health == null)
             health = enemy.AddComponent<MinionHealth3D>();
 
-        health.maxHP = Mathf.RoundToInt(health.maxHP + (currentWave - 1) * enemyHealthPerWave);
+        int baseHp = Mathf.RoundToInt(health.maxHP + (currentWave - 1) * enemyHealthPerWave);
+        health.maxHP = isBoss ? baseHp * 8 : baseHp;
         health.currentHP = health.maxHP;
         health.destroyOnDeath = true;
         health.deathDelay = 0.12f;
@@ -262,8 +315,16 @@ public sealed class S03ArenaDirector : MonoBehaviour
         chase.ResetForSpawn(player);
         chase.target = player;
         chase.chaseRange = arenaRadius * 2f + (blessingRuntime != null ? blessingRuntime.GetEnemyAwarenessRangeBonus() : 0f);
-        chase.damage = Mathf.Max(1, Mathf.RoundToInt(baseEnemyDamage + (currentWave - 1) * enemyDamagePerWave));
+        
+        int baseDmg = Mathf.RoundToInt(baseEnemyDamage + (currentWave - 1) * enemyDamagePerWave);
+        chase.damage = isBoss ? baseDmg * 2 : baseDmg;
+        
         chase.moveSpeed += Mathf.Min(1.8f, currentWave * 0.08f);
+        if (isBoss)
+        {
+            chase.moveSpeed *= 0.85f;
+        }
+
         if (enemyActivationDelay > 0f)
             chase.PauseAI(enemyActivationDelay);
 
@@ -508,5 +569,97 @@ public sealed class S03ArenaDirector : MonoBehaviour
         obj.layer = layer;
         foreach (Transform child in obj.transform)
             SetLayerRecursively(child.gameObject, layer);
+    }
+
+    private void CreateBossHealthBar(MinionHealth3D bossHealth)
+    {
+        Canvas canvas = FindAnyObjectByType<Canvas>();
+        if (canvas == null)
+            return;
+
+        // Create root panel
+        GameObject root = new GameObject("S03_BossHealthRoot");
+        root.transform.SetParent(canvas.transform, false);
+        RectTransform rootRect = root.AddComponent<RectTransform>();
+        rootRect.anchorMin = new Vector2(0.5f, 1f);
+        rootRect.anchorMax = new Vector2(0.5f, 1f);
+        rootRect.pivot = new Vector2(0.5f, 1f);
+        rootRect.anchoredPosition = new Vector2(0f, -60f);
+        rootRect.sizeDelta = new Vector2(600f, 60f);
+
+        // Add background panel
+        Image panel = root.AddComponent<Image>();
+        panel.color = new Color(0.02f, 0.01f, 0.01f, 0.75f);
+        Outline outline = root.AddComponent<Outline>();
+        outline.effectColor = new Color(0.9f, 0.1f, 0.1f, 0.4f);
+        outline.effectDistance = new Vector2(1f, -1f);
+
+        // Add Boss Name Text
+        GameObject nameObj = new GameObject("BossName");
+        nameObj.transform.SetParent(root.transform, false);
+        RectTransform nameRect = nameObj.AddComponent<RectTransform>();
+        nameRect.anchorMin = new Vector2(0.5f, 1f);
+        nameRect.anchorMax = new Vector2(0.5f, 1f);
+        nameRect.pivot = new Vector2(0.5f, 1f);
+        nameRect.anchoredPosition = new Vector2(0f, -5f);
+        nameRect.sizeDelta = new Vector2(580f, 22f);
+        
+        TextMeshProUGUI nameText = nameObj.AddComponent<TextMeshProUGUI>();
+        nameText.fontSize = 18;
+        nameText.alignment = TextAlignmentOptions.Center;
+        nameText.fontStyle = FontStyles.Bold;
+        nameText.color = new Color(1f, 0.85f, 0.2f, 1f); // Gold name
+        nameText.text = "HẮC TINH VƯƠNG (TRÙM CUỐI)";
+
+        // Add Slider Object
+        GameObject sliderObj = new GameObject("BossSlider");
+        sliderObj.transform.SetParent(root.transform, false);
+        RectTransform sliderRect = sliderObj.AddComponent<RectTransform>();
+        sliderRect.anchorMin = new Vector2(0f, 0f);
+        sliderRect.anchorMax = new Vector2(1f, 0f);
+        sliderRect.pivot = new Vector2(0.5f, 0f);
+        sliderRect.anchoredPosition = new Vector2(0f, 8f);
+        sliderRect.sizeDelta = new Vector2(-20f, 20f);
+
+        Slider slider = sliderObj.AddComponent<Slider>();
+        slider.transition = Selectable.Transition.None;
+        slider.direction = Slider.Direction.LeftToRight;
+
+        // Background of Slider
+        GameObject bgObj = new GameObject("Background");
+        bgObj.transform.SetParent(sliderObj.transform, false);
+        RectTransform bgRect = bgObj.AddComponent<RectTransform>();
+        bgRect.anchorMin = Vector2.zero;
+        bgRect.anchorMax = Vector2.one;
+        bgRect.offsetMin = Vector2.zero;
+        bgRect.offsetMax = Vector2.zero;
+        Image bgImg = bgObj.AddComponent<Image>();
+        bgImg.color = new Color(0.2f, 0.04f, 0.05f, 1f);
+
+        // Fill Area
+        GameObject fillArea = new GameObject("Fill Area");
+        fillArea.transform.SetParent(sliderObj.transform, false);
+        RectTransform fillAreaRect = fillArea.AddComponent<RectTransform>();
+        fillAreaRect.anchorMin = Vector2.zero;
+        fillAreaRect.anchorMax = Vector2.one;
+        fillAreaRect.offsetMin = new Vector2(2f, 2f);
+        fillAreaRect.offsetMax = new Vector2(-2f, -2f);
+
+        // Fill Image
+        GameObject fillObj = new GameObject("Fill");
+        fillObj.transform.SetParent(fillArea.transform, false);
+        RectTransform fillRect = fillObj.AddComponent<RectTransform>();
+        fillRect.anchorMin = Vector2.zero;
+        fillRect.anchorMax = Vector2.one;
+        fillRect.offsetMin = Vector2.zero;
+        fillRect.offsetMax = Vector2.zero;
+        Image fillImg = fillObj.AddComponent<Image>();
+        fillImg.color = new Color(0.9f, 0.08f, 0.12f, 1f); // Dark red fill
+
+        slider.fillRect = fillRect;
+
+        // Setup the script
+        S03BossHealthUI uiScript = root.AddComponent<S03BossHealthUI>();
+        uiScript.Setup(bossHealth, "HẮC TINH VƯƠNG (TRÙM CUỐI)");
     }
 }

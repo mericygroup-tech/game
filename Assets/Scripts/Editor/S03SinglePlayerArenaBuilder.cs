@@ -17,8 +17,8 @@ public static class S03SinglePlayerArenaBuilder
     private const string TrungTracBackdropPath = BlessingBackgroundFolder + "/Trung_Trac.png";
     private const string TrungNhiBackdropPath = BlessingBackgroundFolder + "/Trung_Nhi.png";
     private const string QuangTrungBackdropPath = BlessingBackgroundFolder + "/Quang_Trung.png";
-    private const string CoLoaMapAssetPath = "Assets/Models/CoLoa/coloa_map_stage03_unity_colored.glb";
-    private const string CoLoaMapObjectName = "coloa_map_stage03_unity_colored";
+    private const string CoLoaMapAssetPath = "Assets/Models/CoLoa/coloa_three_ring_terrain_bridges_v02.glb";
+    private const string CoLoaMapObjectName = "coloa_three_ring_terrain_bridges_v02";
     private const string MinionPrefabPath = "Assets/Prefabs/Minion.prefab";
     private const string PlayerDisplayName = "Van An";
     private const string PlayerModelPath = VanAnPlayerSetupBuilder.BaseModelPath;
@@ -42,6 +42,57 @@ public static class S03SinglePlayerArenaBuilder
         new Vector3(35.55f, 12.56f, 106.59f),
         new Vector3(35.55f, 12.56f, 106.59f),
     };
+
+    [MenuItem("Tools/Dong Chay Anh Hung/Configure Mouse Look and Spawn")]
+    public static void ConfigureExistingScene()
+    {
+        OpenS03Scene();
+
+        ThirdPersonCamera followCamera = GameObject.FindAnyObjectByType<ThirdPersonCamera>();
+        if (followCamera != null)
+        {
+            followCamera.fixedAngle = false;
+            followCamera.lockCursor = true;
+            EditorUtility.SetDirty(followCamera);
+            Debug.Log("S03 Configurator: Camera set to free-orbit (fixedAngle=false) and lockCursor=true.");
+        }
+        else
+        {
+            Debug.LogWarning("S03 Configurator: No ThirdPersonCamera found in the scene.");
+        }
+
+        PlayerController3D playerController = GameObject.FindAnyObjectByType<PlayerController3D>();
+        if (playerController != null)
+        {
+            playerController.alwaysFaceCamera = true;
+            if (followCamera != null && playerController.cameraTransform == null)
+            {
+                playerController.cameraTransform = followCamera.transform;
+            }
+            EditorUtility.SetDirty(playerController);
+            Debug.Log("S03 Configurator: Player set to alwaysFaceCamera=true.");
+        }
+        else
+        {
+            Debug.LogWarning("S03 Configurator: No PlayerController3D found in the scene.");
+        }
+
+        S03ArenaDirector director = GameObject.FindAnyObjectByType<S03ArenaDirector>();
+        if (director != null)
+        {
+            director.autoStartOnSceneLoad = true;
+            EditorUtility.SetDirty(director);
+            Debug.Log("S03 Configurator: Arena Director set to autoStartOnSceneLoad=true.");
+        }
+        else
+        {
+            Debug.LogWarning("S03 Configurator: No S03ArenaDirector found in the scene.");
+        }
+
+        EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
+        EditorSceneManager.SaveScene(EditorSceneManager.GetActiveScene());
+        Debug.Log("S03 Configurator: Successfully configured existing camera, player, and director without rebuilding!");
+    }
 
     [MenuItem("Tools/Dong Chay Anh Hung/Rebuild S03 Combat Arena")]
     public static void BuildScene()
@@ -129,6 +180,7 @@ public static class S03SinglePlayerArenaBuilder
             waveText,
             statusText);
         director.ConfigureWaveTuning(3, 1, 12, 0, layout.Radius, 1.2f, 1.15f, 8f, 12, 0f);
+        director.autoStartOnSceneLoad = true;
 
         Selection.activeGameObject = root;
         EditorSceneManager.MarkSceneDirty(EditorSceneManager.GetActiveScene());
@@ -245,10 +297,13 @@ public static class S03SinglePlayerArenaBuilder
         Transform[] spawnPoints = new Transform[8];
         for (int i = 0; i < spawnPoints.Length; i++)
         {
-            Vector3 position = PhongHTEnemySpawns[i];
+            float angle = i * 45f * Mathf.Deg2Rad;
+            Vector3 position = center + new Vector3(Mathf.Cos(angle) * 18f, 0f, Mathf.Sin(angle) * 18f);
+            position.y = PhongHTGroundY;
             GameObject point = new GameObject("S03_EnemySpawn_" + (i + 1).ToString("00"));
             point.transform.SetParent(root.transform, false);
-            point.transform.localPosition = position;
+            point.transform.position = position;
+            point.AddComponent<S03SpawnPointGizmo>();
             spawnPoints[i] = point.transform;
         }
 
@@ -360,10 +415,10 @@ public static class S03SinglePlayerArenaBuilder
             followCamera.target = player.transform;
             followCamera.distance = 5.8f;
             followCamera.height = 2.7f;
-            followCamera.fixedAngle = true;
+            followCamera.fixedAngle = false;
             followCamera.fixedYaw = 45f;
             followCamera.fixedPitch = 36f;
-            followCamera.lockCursor = false;
+            followCamera.lockCursor = true;
         }
 
         return player.transform;

@@ -10,14 +10,14 @@ public class ThirdPersonCamera : MonoBehaviour
     public float height = 4f;
     public float mouseSensitivity = 3f;
     public float smoothSpeed = 8f;
-    public bool fixedAngle = true;
+    public bool fixedAngle = false;
     public float fixedYaw = 45f;
     public bool useTargetHeadingWhenFixed = false;
     public float fixedYawOffset = 0f;
     public float fixedPitch = 58f;
     public float lookAtHeight = 1.5f;
     public float shoulderOffset = 0f;
-    public bool lockCursor = false;
+    public bool lockCursor = true;
 
     [Header("Death View")]
     public float deathYaw = 45f;
@@ -159,9 +159,12 @@ public class ThirdPersonCamera : MonoBehaviour
         }
         else
         {
-            yaw += Input.GetAxis("Mouse X") * mouseSensitivity;
-            pitch -= Input.GetAxis("Mouse Y") * mouseSensitivity;
-            pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+            if (Cursor.lockState == CursorLockMode.Locked)
+            {
+                yaw += Input.GetAxis("Mouse X") * mouseSensitivity;
+                pitch -= Input.GetAxis("Mouse Y") * mouseSensitivity;
+                pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
+            }
             targetYaw = yaw;
             targetPitch = pitch;
             targetDistance = distance;
